@@ -58,7 +58,7 @@ module.exports = {
     headless: "new",
     waitTimeout: 60000
   },
-  asyncCaptureLimit: 1,
+  asyncCaptureLimit: 3,
   asyncCompareLimit: 50,
   debug: false,
   debugWindow: false
