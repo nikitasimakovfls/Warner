@@ -5,6 +5,7 @@ module.exports = async (page, scenario, vp) => {
   const passSelector = '#Password';
   const submitSelector = '#Submit';
   const cookieAcceptSelector = '#onetrust-accept-btn-handler';
+  
   const user = process.env.WARNER_USER;
   const pass = process.env.WARNER_PASS;
 
@@ -14,14 +15,14 @@ module.exports = async (page, scenario, vp) => {
     await page.type(userSelector, user);
     await page.type(passSelector, pass);
     await page.click(submitSelector);
-    
+
     // Wait for the initial redirect and page load after login
     await new Promise(r => setTimeout(r, 2000));
 
     // 2. Cookie handling: Click accept button if the banner appears
     if (await page.$(cookieAcceptSelector)) {
-        await page.click(cookieAcceptSelector);
-        console.log('Cookie accepted');
+      await page.click(cookieAcceptSelector);
+      console.log('Cookie accepted');
     }
 
     // 3. Force stop animations: Inject CSS to freeze all transitions and keyframes
@@ -57,12 +58,9 @@ module.exports = async (page, scenario, vp) => {
       });
     });
 
-    // Important: Wait at the bottom to ensure the last images are fully downloaded
-    //await new Promise(r => setTimeout(r, 2000));
-
     // 5. Reset position: Scroll back to the top before taking the screenshot
     await page.evaluate(() => window.scrollTo(0, 0));
-    
+
     // Technical pause to ensure the top area is repainted after the scroll jump
     await new Promise(r => setTimeout(r, 3000));
     console.log('Ready for capture.');
