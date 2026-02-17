@@ -1,0 +1,11 @@
+# Ignore tests results and reports
+backstop_data/bitmaps_reference/
+backstop_data/bitmaps_test/
+backstop_data/html_report/
+backstop_data/ci_report/
+
+# Ignore sys files and logs
+node_modules/
+debug_error.png
+.DS_Store
+.env
