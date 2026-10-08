@@ -1,0 +1,20 @@
+{
+  "name": "warner-visual-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "login": "node login.js",
+    "reference": "backstop reference --config=backstop.config.js",
+    "test": "backstop test --config=backstop.config.js",
+    "approve": "backstop approve --config=backstop.config.js",
+    "report": "backstop openReport --config=backstop.config.js"
+  },
+  "devDependencies": {
+    "backstopjs": "^6.3.25",
+    "dotenv": "^16.4.5",
+    "puppeteer": "^22.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

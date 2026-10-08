@@ -9,3 +9,6 @@ node_modules/
 debug_error.png
 .DS_Store
 .env
+
+# Auth session
+.auth/
