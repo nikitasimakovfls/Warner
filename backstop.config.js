@@ -28,13 +28,36 @@ const COMMON_HIDE = [
 
 const pages = [
   { label: 'Homepage', path: '/' },
-  { label: 'Breaks', path: '/breaks' },
-  { label: 'Festive', path: '/breaks/festive-breaks' },
   { label: 'Hotels', path: '/hotels' },
-  { label: 'Alvaston_Hall_Hotel', path: '/hotels/alvaston-hall-hotel' },
+  { label: 'Locations', path: '/locations' },
+  {
+    label: 'Alvaston_Hall_Hotel',
+    path: '/hotels/alvaston-hall-hotel',
+    removeSelectors: ['.hotelDetailPageArea.searchPageContainer']
+  },
+  { label: 'Entertainment', path: '/discover-warner-breaks/entertainment' },
+  { label: 'Dining', path: '/discover-warner-breaks/dining' },
+  { label: 'Dining_Market_Kitchen', path: '/discover-warner-breaks/dining/market-kitchen' },
+  { label: 'Dining_Brasserie32', path: '/discover-warner-breaks/dining/brasserie32' },
+  { label: 'Thoresby_Hall_Blue_Room', path: '/hotels/thoresby-hall-hotel/the-blue-room' },
+  { label: 'Breaks', path: '/breaks' },
+  {
+    label: 'Festive',
+    path: '/breaks/festive-breaks',
+    removeSelectors: ['.searchPageArea.searchPageContainer']
+  },
+  { label: 'Spa_and_Wellness', path: '/breaks/spa-and-wellness' },
+  { label: 'Spa_Treatments', path: '/discover-warner-breaks/spa-treatments' },
+  { label: 'Reserve_Spa_Treatments', path: '/discover-warner-breaks/reserve-spa-treatments' },
+  { label: 'Things_To_Do', path: '/discover-warner-breaks/things-to-do-and-activities' },
+  { label: 'Heythrop_Park_Golf_Club', path: '/hotels/heythrop-park-hotel/golf-club' },
+  { label: 'Celebrations', path: '/discover-warner-breaks/celebrations' },
   { label: 'Deals', path: '/deals' },
-  { label: 'GBBS', path: '/deals/gbbs' },
-  { label: 'About', path: '/discover-warner-breaks' }
+  { label: 'About', path: '/discover-warner-breaks' },
+  { label: 'All_Inclusive', path: '/breaks/all-inclusive' },
+  { label: 'First_Stay_Promise', path: '/first-stay-promise' },
+  { label: 'Booking_Options', path: '/discover-warner-breaks/booking-options' },
+  { label: 'My_Warner_Stay', path: '/my-warner-stay' }
 ];
 
 const scenarios = pages.map(({ label, path, hideSelectors = [], removeSelectors = [], ...overrides }) => ({
@@ -43,7 +66,7 @@ const scenarios = pages.map(({ label, path, hideSelectors = [], removeSelectors 
   cookiePath,
   delay: 0,
   selectors: ['document'],
-  misMatchThreshold: 0.1,
+  misMatchThreshold: 0,
   requireSameDimensions: true,
   hideSelectors: [...COMMON_HIDE, ...hideSelectors],
   removeSelectors,
@@ -69,7 +92,8 @@ module.exports = {
     transparency: 0.3,
     largeImageThreshold: 1200,
     useCrossOrigin: false,
-    outputDiff: true
+    outputDiff: true,
+    usePreciseMatching: true
   },
   fileNameTemplate: '{scenarioLabel}_{viewportLabel}',
   report: ['browser', 'CI'],

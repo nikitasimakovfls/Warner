@@ -35,12 +35,11 @@ module.exports = async (page, scenario, vp) => {
 
   await page.addStyleTag({ content: FREEZE_CSS });
 
-  await page.evaluate(() => {
-    document.querySelectorAll('video').forEach(v => {
-      v.pause();
-      v.currentTime = 0;
+  if (Array.isArray(scenario.removeSelectors) && scenario.removeSelectors.length) {
+    await page.addStyleTag({
+      content: `${scenario.removeSelectors.join(', ')} { display: none !important; }`
     });
-  });
+  }
 
   await page.evaluate(async () => {
     const step = 300;
@@ -64,37 +63,38 @@ module.exports = async (page, scenario, vp) => {
     );
   });
 
+  await page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 }).catch(() => {});
+
   await page.evaluate(() => {
-    document.querySelectorAll('.swiper, .swiper-container').forEach(el => {
-      const sw = el.swiper;
-      if (!sw) return;
-      if (sw.autoplay && sw.autoplay.stop) sw.autoplay.stop();
-      if (sw.params && sw.params.loop && sw.slideToLoop) sw.slideToLoop(0, 0, false);
-      else if (sw.slideTo) sw.slideTo(0, 0, false);
-      if (sw.update) sw.update();
+    document.querySelectorAll('video').forEach(v => {
+      v.pause();
+      v.currentTime = 0;
     });
-    const $ = window.jQuery;
-    if ($ && $.fn) {
-      if ($.fn.slick) {
-        $('.slick-initialized').each((_, el) => {
-          $(el).slick('slickPause');
-          $(el).slick('slickGoTo', 0, true);
-        });
-      }
-      if ($.fn.owlCarousel) {
-        $('.owl-carousel').trigger('stop.owl.autoplay').trigger('to.owl.carousel', [0, 0]);
-      }
-    }
-    if (window.Splide && window.Splide.instances) {
-      Object.values(window.Splide.instances).forEach(sp => {
-        if (sp.Components && sp.Components.Autoplay) sp.Components.Autoplay.pause();
-        sp.go(0);
-      });
-    }
     window.dispatchEvent(new Event('resize'));
   });
+  await sleep(1000);
 
-  await sleep(300);
-  await page.waitForNetworkIdle({ idleTime: 500, timeout: 10000 }).catch(() => {});
+  const tracks = await page.evaluate(async () => {
+    const snapshot = () => Array.from(document.querySelectorAll('.sliderTrack')).map(track => {
+      const container = track.closest('.gallerySliderContainerBlock');
+      const items = track.querySelectorAll('.sliderItem');
+      const active = Array.from(items).findIndex(i => i.classList.contains('active'));
+      const leftAligned = container && container.classList.contains('leftAligned') &&
+        (container.closest('.promoHowItWorksContainer') || container.classList.contains('hotel-promo-carousel'));
+      if (leftAligned && active >= 0) {
+        track.style.transform = `translateX(-${items[active].offsetLeft - items[0].offsetLeft}px)`;
+      }
+      return track.style.transform;
+    }).join('|');
+    let prev = snapshot();
+    for (let i = 0; i < 5; i++) {
+      await new Promise(r => setTimeout(r, 300));
+      const next = snapshot();
+      if (next === prev) return { stable: true, value: next };
+      prev = next;
+    }
+    return { stable: false, value: prev };
+  });
+  console.log(`${scenario.label} | sliderTrack | stable=${tracks.stable} | ${tracks.value}`);
   await sleep(scenario.settleMs ?? 1000);
 };
