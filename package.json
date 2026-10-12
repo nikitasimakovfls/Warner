@@ -3,16 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "login": "node login.js",
-    "reference": "backstop reference --config=backstop.config.js",
-    "test": "backstop test --config=backstop.config.js",
-    "approve": "backstop approve --config=backstop.config.js",
-    "report": "backstop openReport --config=backstop.config.js"
+    "reference": "node run.js reference",
+    "test": "node run.js test",
+    "approve": "node run.js approve",
+    "report": "node run.js report",
+    "summary": "node run.js summary"
   },
   "devDependencies": {
     "backstopjs": "^6.3.25",
-    "dotenv": "^16.4.5",
-    "puppeteer": "^22.1.0"
+    "dotenv": "^16.4.5"
   },
   "engines": {
     "node": ">=18"

@@ -10,5 +10,5 @@ debug_error.png
 .DS_Store
 .env
 
-# Auth session
-.auth/
+# Run summaries
+reports/

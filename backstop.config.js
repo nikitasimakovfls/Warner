@@ -1,11 +1,11 @@
 require('dotenv').config();
+const ENVIRONMENTS = require('./environments');
 
-const baseUrl = (process.env.BASE_URL || '').replace(/\/+$/, '');
-if (!baseUrl) {
-  throw new Error('BASE_URL missing in .env');
+const target = process.env.TARGET;
+if (!ENVIRONMENTS[target]) {
+  throw new Error(`TARGET must be one of: ${Object.keys(ENVIRONMENTS).join(', ')}. Run: npm run test <target>`);
 }
-
-const cookiePath = process.env.AUTH_FILE || undefined;
+const baseUrl = ENVIRONMENTS[target].replace(/\/+$/, '');
 
 const ALL_VIEWPORTS = [
   { label: 'Desktop', width: 1920, height: 1080 },
@@ -60,10 +60,9 @@ const pages = [
   { label: 'My_Warner_Stay', path: '/my-warner-stay' }
 ];
 
-const scenarios = pages.map(({ label, path, hideSelectors = [], removeSelectors = [], ...overrides }) => ({
+const scenarios = pages.filter(p => !p.targets || p.targets.includes(target)).map(({ label, path, targets, hideSelectors = [], removeSelectors = [], ...overrides }) => ({
   label,
   url: `${baseUrl}${path}`,
-  cookiePath,
   delay: 0,
   selectors: ['document'],
   misMatchThreshold: 0,
@@ -74,17 +73,17 @@ const scenarios = pages.map(({ label, path, hideSelectors = [], removeSelectors 
 }));
 
 module.exports = {
-  id: 'warner_test',
+  id: `warner_${target}`,
   viewports,
   onBeforeScript: 'puppet/onBefore.js',
   onReadyScript: 'puppet/onReady.js',
   scenarios,
   paths: {
-    bitmaps_reference: 'backstop_data/bitmaps_reference',
-    bitmaps_test: 'backstop_data/bitmaps_test',
+    bitmaps_reference: `backstop_data/bitmaps_reference/${target}`,
+    bitmaps_test: `backstop_data/bitmaps_test/${target}`,
     engine_scripts: 'backstop_data/engine_scripts',
-    html_report: 'backstop_data/html_report',
-    ci_report: 'backstop_data/ci_report'
+    html_report: `backstop_data/html_report/${target}`,
+    ci_report: `backstop_data/ci_report/${target}`
   },
   resembleOutputOptions: {
     errorColor: { red: 255, green: 0, blue: 255 },

@@ -25,10 +25,8 @@ module.exports = async (page, scenario, vp) => {
   const expectedHost = new URL(scenario.url).host;
   const actualUrl = page.url();
   const actualHost = new URL(actualUrl).host;
-  const hasLoginForm = await page.$('#UserName, input[type="password"]');
-
-  if (actualHost !== expectedHost || hasLoginForm) {
-    throw new Error(`AUTH: redirected to login (${actualUrl}). Run: npm run login`);
+  if (actualHost !== expectedHost) {
+    throw new Error(`REDIRECT: ${scenario.url} -> ${actualUrl}`);
   }
 
   console.log(`${scenario.label} | ${vp.label} | ${actualUrl}`);
