@@ -1,4 +1,5 @@
 const ENVIRONMENTS = require('./environments');
+const { build } = require('./summary');
 
 const COMMANDS = {
   reference: 'reference',
@@ -22,8 +23,6 @@ const backstop = require('backstopjs');
 
 console.log(`target: ${target} | ${ENVIRONMENTS[target]}${filter ? ` | filter: ${filter}` : ''}`);
 
-const { build } = require('./summary');
-
 const writeSummary = () => {
   const r = build(target, ENVIRONMENTS[target], config, filter);
   if (!r) {
@@ -39,7 +38,6 @@ if (command === 'summary') {
   writeSummary();
 } else {
   backstop(COMMANDS[command], { config, filter })
-    .then(() => { process.exitCode = 0; })
     .catch(() => { process.exitCode = 1; })
     .finally(() => { if (command === 'test') writeSummary(); });
 }

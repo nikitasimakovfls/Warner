@@ -22,8 +22,7 @@ const viewports = ALL_VIEWPORTS.filter(v => enabledViewports.includes(v.label));
 
 const COMMON_HIDE = [
   '.cookie-banner',
-  '#feedback-widget',
-  '#onetrust-consent-sdk'
+  '#feedback-widget'
 ];
 
 const pages = [
@@ -60,17 +59,19 @@ const pages = [
   { label: 'My_Warner_Stay', path: '/my-warner-stay' }
 ];
 
-const scenarios = pages.filter(p => !p.targets || p.targets.includes(target)).map(({ label, path, targets, hideSelectors = [], removeSelectors = [], ...overrides }) => ({
-  label,
-  url: `${baseUrl}${path}`,
-  delay: 0,
-  selectors: ['document'],
-  misMatchThreshold: 0,
-  requireSameDimensions: true,
-  hideSelectors: [...COMMON_HIDE, ...hideSelectors],
-  removeSelectors,
-  ...overrides
-}));
+const scenarios = pages
+  .filter(p => !p.targets || p.targets.includes(target))
+  .map(({ label, path, targets, hideSelectors = [], removeSelectors = [], ...overrides }) => ({
+    label,
+    url: `${baseUrl}${path}`,
+    delay: 0,
+    selectors: ['document'],
+    misMatchThreshold: 0,
+    requireSameDimensions: true,
+    hideSelectors: [...COMMON_HIDE, ...hideSelectors],
+    removeSelectors,
+    ...overrides
+  }));
 
 module.exports = {
   id: `warner_${target}`,

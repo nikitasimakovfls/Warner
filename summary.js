@@ -47,7 +47,7 @@ function build(target, baseUrl, config, filter) {
   const report = JSON.parse(fs.readFileSync(path.join(testDir, run, 'report.json'), 'utf8'));
   const data = rows(report, refDir).sort((a, b) => (a.status === b.status ? a.n - b.n : a.status === 'FAIL' ? -1 : 1));
   const failed = data.filter(r => r.status === 'FAIL').length;
-  const viewports = [...new Set(config.viewports.map(v => `${v.label} ${v.width}x${v.height}`))].join(', ');
+  const viewports = config.viewports.map(v => `${v.label} ${v.width}x${v.height}`).join(', ');
 
   const meta = [
     ['Result', failed ? 'FAILED' : 'PASSED'],
