@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Warner automation tests</title>
+<style>
+:root {
+  --bg: #f5f6f8; --panel: #ffffff; --text: #1d232b; --muted: #687280; --border: #dfe3e8;
+  --accent: #1f5f8b; --accent-text: #ffffff; --ok: #1f8a4c; --fail: #c0392b; --warn: #b7791f;
+  --log-bg: #0f1720; --log-text: #d6dde6; --hover: #eef2f6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #11151a; --panel: #181e25; --text: #e4e8ed; --muted: #94a0ad; --border: #2a323c;
+    --accent: #4a9fd8; --accent-text: #0b1117; --ok: #3ccb7f; --fail: #ef6b5f; --warn: #e8b04a;
+    --log-bg: #0a0e12; --log-text: #c9d2dc; --hover: #1f2730;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+header { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 14px 24px; background: var(--panel); border-bottom: 1px solid var(--border); }
+header h1 { font-size: 17px; margin: 0; font-weight: 600; }
+main { display: grid; grid-template-columns: 380px 1fr; gap: 16px; padding: 16px 24px; align-items: start; }
+@media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+.stack { display: grid; gap: 16px; min-width: 0; }
+.card { min-width: 0; }
+#runs { overflow-x: auto; }
+.shiftc { color: var(--warn); font-weight: 600; }
+.seg { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg button { flex: 1; padding: 8px; border: 0; background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+.seg button.active { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+.base { margin-top: 6px; font-size: 12px; color: var(--muted); word-break: break-all; }
+.tools { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.tools input { flex: 1; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+.cardhead { display: flex; align-items: center; justify-content: space-between; }
+.link.clear { color: var(--fail); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; opacity: .8; }
+.link.clear:hover { opacity: 1; text-decoration: underline; }
+.link { background: none; border: 0; color: var(--accent); cursor: pointer; font: inherit; padding: 0; }
+.list { max-height: 62vh; overflow: auto; border: 1px solid var(--border); border-radius: 6px; }
+.item { display: flex; gap: 8px; align-items: flex-start; padding: 6px 9px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.item:last-child { border-bottom: 0; }
+.item:hover { background: var(--hover); }
+.item span { display: block; }
+.item .u { font-size: 11px; color: var(--muted); word-break: break-all; }
+.count { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { padding: 8px 16px; border-radius: 7px; border: 1px solid var(--border); background: var(--panel); color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+.btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.btn.danger { color: var(--fail); border-color: var(--fail); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.runstate { display: flex; align-items: center; gap: 8px; border-left: 1px solid var(--border); padding-left: 16px; margin-left: 16px; min-height: 32px; font-weight: 600; color: var(--muted); }
+.runstate.busy { color: var(--warn); }
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.busy { background: var(--warn); animation: breathe 1.8s ease-in-out infinite; }
+@keyframes breathe {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 color-mix(in srgb, var(--warn) 60%, transparent); }
+  50% { opacity: .25; box-shadow: 0 0 0 5px color-mix(in srgb, var(--warn) 0%, transparent); }
+}
+.meta { font-size: 12px; color: var(--muted); margin-top: 8px; }
+pre { margin: 0; background: var(--log-bg); color: var(--log-text); border-radius: 6px; padding: 10px; height: 340px; overflow: auto; font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; }
+td a { color: var(--accent); text-decoration: none; margin-right: 8px; }
+.okc { color: var(--ok); font-weight: 600; }
+.failc { color: var(--fail); font-weight: 600; }
+.empty { color: var(--muted); font-size: 13px; }
+.vps { display: grid; gap: 6px; }
+.vp { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+.vp:hover { filter: brightness(1.08); }
+.vp.full { background: color-mix(in srgb, var(--ok) 14%, var(--panel)); border-left: 4px solid var(--ok); }
+.vp.part { background: color-mix(in srgb, var(--warn) 16%, var(--panel)); border-left: 4px solid var(--warn); }
+.vp.full .r { color: var(--ok); }
+.vp.part .r { color: var(--warn); }
+.vp.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.vp .n { font-weight: 600; }
+.vp .ck { width: 14px; height: 14px; border: 1px solid var(--muted); border-radius: 3px; flex: none; display: grid; place-items: center; font-size: 11px; line-height: 1; color: var(--accent-text); }
+.vp.active .ck { background: var(--accent); border-color: var(--accent); }
+.vp.active .ck::after { content: "\2713"; }
+.hint { font-size: 12px; color: var(--warn); margin-top: 8px; }
+.hint:empty { display: none; }
+.keep { font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.keep select { padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+.link.apr { color: #8b5cf6; font-weight: 600; font-size: 13px; border: 1px solid #8b5cf6; border-radius: 999px; padding: 0 8px; margin-left: 2px; }
+.link.apr:hover { background: color-mix(in srgb, #8b5cf6 15%, transparent); }
+.link.apr:disabled { opacity: .4; cursor: not-allowed; }
+.muted { color: var(--muted); }
+td .gone { color: var(--muted); opacity: .6; margin-right: 8px; cursor: help; }
+.pager { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+.pager:empty { display: none; }
+.pager select { padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+.pager .sp { flex: 1; }
+.pager .pg { padding: 3px 10px; font-size: 12px; }
+td .ln { white-space: nowrap; }
+tr.cmd-reference td { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+tr.cmd-approve td { background: color-mix(in srgb, #8b5cf6 12%, var(--panel)); }
+tr.cmd-reference td:first-child { box-shadow: inset 4px 0 0 var(--accent); }
+tr.cmd-approve td:first-child { box-shadow: inset 4px 0 0 #8b5cf6; }
+.cmd { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: .02em; border: 1px solid var(--border); color: var(--text); }
+.cmd.reference { border-color: var(--accent); color: var(--accent); }
+.cmd.approve { border-color: #8b5cf6; color: #8b5cf6; }
+td .ln + .ln { margin-top: 4px; }
+.vp .r { margin-left: auto; font-size: 12px; color: var(--muted); }
+.custom { display: grid; grid-template-columns: 1fr 1fr auto 1fr; gap: 6px; align-items: center; margin-top: 8px; }
+.custom select, .custom input { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+.vpbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.btn.add { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.btn.remove { background: var(--fail); color: #ffffff; border-color: var(--fail); }
+.err { color: var(--fail); font-size: 12px; margin-top: 6px; min-height: 1em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Warner automation tests</h1>
+</header>
+<main>
+  <div class="stack">
+    <section class="card">
+      <h2>Environment</h2>
+      <div id="envs" class="seg"></div>
+      <div id="base" class="base"></div>
+    </section>
+    <section class="card">
+      <h2>Viewport</h2>
+      <div id="vps" class="vps"></div>
+      <div class="custom">
+        <select id="c-type"></select>
+        <input id="c-w" type="number" min="200" max="7680" placeholder="width">
+        <span>x</span>
+        <input id="c-h" type="number" min="200" max="4320" placeholder="height">
+      </div>
+      <div class="vpbtns">
+        <button class="btn add" id="c-add">Add</button>
+        <button class="btn remove" id="c-remove">Remove</button>
+      </div>
+      <div id="c-err" class="err"></div>
+    </section>
+    <section class="card">
+      <h2>Scenarios</h2>
+      <div class="tools">
+        <input id="search" type="search" placeholder="Filter">
+        <button class="link" id="all">All</button>
+        <button class="link" id="none">None</button>
+      </div>
+      <div id="list" class="list"></div>
+      <div id="count" class="count"></div>
+    </section>
+  </div>
+  <div class="stack">
+    <section class="card">
+      <h2>Run</h2>
+      <div class="actions">
+        <button class="btn" id="b-reference">Reference</button>
+        <button class="btn primary" id="b-test">Test</button>
+        <button class="btn danger" id="b-stop" disabled>Stop</button>
+        <div id="runstate" class="runstate"><span id="dot" class="dot"></span><span id="status">Idle</span></div>
+      </div>
+      <div id="hint" class="hint"></div>
+      <div id="runmeta" class="meta"></div>
+    </section>
+    <section class="card">
+      <h2 class="cardhead">Log <button class="link clear" id="log-clear">Clear</button></h2>
+      <pre id="log"></pre>
+    </section>
+    <section class="card">
+      <h2 class="cardhead">Test runs <label class="keep">Keep images of last <select id="keep"></select> runs</label></h2>
+      <div id="runs"></div>
+      <div id="pager" class="pager"></div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let runsPage = {}, runsSize = 10;
+let meta = null, env = null, state = {}, selected = {}, vpSel = {}, sets = {}, customs = {};
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function scenarios() { return meta.envs.find(e => e.name === env).scenarios; }
+const VP_RE = /^(desktop|mobile):(\d{2,5})x(\d{2,5})$/;
+const keyLabel = key => String(key || '').replace('/', ' ');
+const vpList = () => [...vpSel[env]];
+const vpLabel = spec => { const m = VP_RE.exec(spec); return m ? `${m[1][0].toUpperCase() + m[1].slice(1)} ${m[2]}x${m[3]}` : spec; };
+
+function renderVps() {
+  const presets = meta.presets.map(p => p.spec);
+  const custom = customs[env];
+  const labels = scenarios().map(x => x.label);
+  const have = spec => { const x = (sets[env] || []).find(v => v.spec === spec); const h = new Set(x ? x.labels : []); return labels.filter(l => h.has(l)).length; };
+  const refs = spec => { const n = have(spec); return n ? `${n}/${labels.length} refs` : 'no refs'; };
+  const refState = spec => (have(spec) === labels.length ? 'full' : 'part');
+  $('c-remove').disabled = !vpList().some(v => custom.includes(v));
+  $('vps').innerHTML = [...presets, ...custom].map(spec => `<div class="vp ${refState(spec)} ${vpSel[env].has(spec) ? 'active' : ''}" data-spec="${spec}" title="${refState(spec) === 'full' ? 'all references captured' : 'references missing'}"><span class="ck"></span><span class="n">${vpLabel(spec)}</span>${presets.includes(spec) ? '' : '<span>custom</span>'}<span class="r">${refs(spec)}</span></div>`).join('');
+  $('vps').querySelectorAll('.vp').forEach(d => d.onclick = () => {
+    const sp = d.dataset.spec, set = vpSel[env];
+    if (set.has(sp)) { if (set.size > 1) set.delete(sp); } else set.add(sp);
+    saveVps(); renderVps(); renderButtons();
+  });
+}
+
+function saveVps() { store.set('vps_' + env, vpList()); store.set('custom_' + env, customs[env]); }
+
+function addCustom() {
+  const t = $('c-type').value, w = Number($('c-w').value), h = Number($('c-h').value);
+  if (!(Number.isInteger(w) && Number.isInteger(h) && w >= 200 && w <= 7680 && h >= 200 && h <= 4320)) { $('c-err').textContent = 'width 200-7680, height 200-4320'; return; }
+  $('c-err').textContent = '';
+  const spec = `${t}:${w}x${h}`;
+  if (!meta.presets.some(p => p.spec === spec) && !customs[env].includes(spec)) customs[env].push(spec);
+  vpSel[env].add(spec); $('c-w').value = ''; $('c-h').value = '';
+  saveVps(); renderVps(); renderButtons();
+}
+
+function removeCustom() {
+  const gone = vpList().filter(v => customs[env].includes(v));
+  if (!gone.length) return;
+  const names = gone.map(vpLabel).join(', ');
+  if (!confirm(`Remove ${names} from the list? References on disk are kept.`)) return;
+  customs[env] = customs[env].filter(v => !gone.includes(v));
+  gone.forEach(v => vpSel[env].delete(v));
+  if (!vpSel[env].size) vpSel[env].add(meta.presets[0].spec);
+  $('c-err').textContent = '';
+  saveVps(); renderVps(); renderButtons();
+}
+
+function renderEnvs() {
+  $('envs').innerHTML = meta.envs.map(e => `<button data-env="${e.name}" class="${e.name === env ? 'active' : ''}">${e.name}</button>`).join('');
+  $('envs').querySelectorAll('button').forEach(b => b.onclick = () => { env = b.dataset.env; store.set('env', env); renderAll(); });
+  $('base').textContent = meta.envs.find(e => e.name === env).base;
+}
+
+function renderList() {
+  const q = $('search').value.trim().toLowerCase();
+  const sel = selected[env];
+  $('list').innerHTML = scenarios()
+    .filter(s => !q || s.label.toLowerCase().includes(q) || s.url.toLowerCase().includes(q))
+    .map(s => `<label class="item"><input type="checkbox" data-l="${esc(s.label)}" ${sel.has(s.label) ? 'checked' : ''}><span><span>${esc(s.label)}</span><span class="u">${esc(s.url)}</span></span></label>`)
+    .join('');
+  $('list').querySelectorAll('input').forEach(i => i.onchange = () => {
+    i.checked ? sel.add(i.dataset.l) : sel.delete(i.dataset.l);
+    saveSel(); renderCount();
+  });
+  renderCount();
+}
+
+function renderCount() {
+  $('count').textContent = `${selected[env].size} / ${scenarios().length} selected`;
+  renderButtons();
+}
+
+function saveSel() { store.set('sel_' + env, [...selected[env]]); }
+
+function missingRefs() {
+  const out = [];
+  for (const spec of vpList()) {
+    const set = (sets[env] || []).find(v => v.spec === spec);
+    const have = new Set(set ? set.labels : []);
+    const miss = [...selected[env]].filter(l => !have.has(l));
+    if (miss.length) out.push({ spec, miss });
+  }
+  return out;
+}
+
+function renderButtons() {
+  const busy = !!state.running;
+  const none = !selected[env] || selected[env].size === 0;
+  const miss = none ? [] : missingRefs();
+  $('b-reference').disabled = busy || none;
+  document.querySelectorAll('.apr').forEach(b => b.disabled = busy);
+  $('b-test').disabled = busy || none || miss.length > 0;
+  $('b-stop').disabled = !busy || state.stopped;
+  $('hint').textContent = miss.length ? `Test disabled, missing references: ${miss.map(m => `${vpLabel(m.spec)} (${m.miss.length})`).join(', ')}` : '';
+  const verbs = { reference: 'Getting refs', test: 'Testing', approve: 'Approving' };
+  const vps = state.viewports || [];
+  const step = vps.length > 1 ? ` (${(state.index || 0) + 1}/${vps.length})` : '';
+  $('runstate').className = busy ? 'runstate busy' : 'runstate';
+  $('dot').className = busy ? 'dot busy' : 'dot';
+  $('status').textContent = !busy ? 'Idle' : state.stopped ? 'Stopping' : `${verbs[state.command] || state.command} ${state.target} ${keyLabel(state.current)}${step}`;
+  const m = [];
+  if (state.command) m.push(`last: ${state.command} ${state.target} ${vps.map(keyLabel).join(' / ')}`);
+  if (!busy && state.stopped) m.push('stopped');
+  if (!busy && state.exitCode !== null && state.exitCode !== undefined) m.push(`exit ${state.exitCode}`);
+  if (state.startedAt) m.push(`started ${new Date(state.startedAt).toLocaleString()}`);
+  if (state.finishedAt) m.push(`finished ${new Date(state.finishedAt).toLocaleString()}`);
+  if (state.labels && state.labels.length) m.push(`${state.labels.length} scenario(s)`);
+  $('runmeta').textContent = m.join(' | ');
+}
+
+const pad2 = n => String(n).padStart(2, '0');
+const fmtTime = iso => { const d = new Date(iso); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
+const cls = st => (st === 'FAILED' || st === 'STOPPED' ? 'failc' : st === 'SHIFT' ? 'shiftc' : 'okc');
+
+function itemCells(row, it) {
+  const r = it.run;
+  const logLink = it.log ? `<a href="${it.log}" target="_blank">log</a>` : '';
+  if (it.stopped) return ['-', 'STOPPED', logLink || '-'];
+  if (row.command === 'test' && it.exitCode === 2 && !r) return ['missing refs', 'FAILED', logLink || '-'];
+  if (r) {
+    const hard = r.failed.filter(f => f.kind !== 'shift').length;
+    const soft = r.failed.length - hard;
+    const res = `<span class="${hard ? 'failc' : soft ? 'shiftc' : 'okc'}">${r.total - r.failed.length}/${r.total}</span>`;
+    const html = r.images === false ? '<span class="gone" title="images removed">html</span>' : `<a href="${r.html}" target="_blank">html</a>`;
+    const apr = r.approvable ? `<button class="link apr" data-vp="${esc(it.viewport)}" data-run="${esc(r.id)}" data-labels="${esc(r.failed.map(f => f.label).join('\n'))}" ${state.running ? 'disabled' : ''}>approve</button>` : '';
+    const files = [html, r.txt && `<a href="${r.txt}" target="_blank">txt</a>`, r.md && `<a href="${r.md}" target="_blank">md</a>`, logLink, apr].filter(Boolean).join('');
+    return [res, r.status, files];
+  }
+  const st = it.exitCode === 0 ? 'Success' : 'FAILED';
+  const from = row.command === 'approve' && it.approvedRun ? ` <span class="muted">from ${it.approvedRun.replace(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5:$6')}</span>` : '';
+  return [`${row.scenarios} scenario(s)${from}`, st, logLink || '-'];
+}
+
+function renderPager(r) {
+  if (!r.total) { $('pager').innerHTML = ''; return; }
+  const opts = [10, 20, 50, 100].map(n => `<option value="${n}" ${n === runsSize ? 'selected' : ''}>${n}</option>`).join('');
+  $('pager').innerHTML = `<span>Rows per page</span><select id="pg-size">${opts}</select><span class="sp"></span><span>${r.total} run(s)</span><button class="btn pg" id="pg-prev" ${r.page <= 1 ? 'disabled' : ''}>&lsaquo;</button><span>Page ${r.page} of ${r.pages}</span><button class="btn pg" id="pg-next" ${r.page >= r.pages ? 'disabled' : ''}>&rsaquo;</button>`;
+  $('pg-size').onchange = e => { runsSize = Number(e.target.value); store.set('runs_size', runsSize); runsPage[env] = 1; loadRuns(); };
+  $('pg-prev').onclick = () => { runsPage[env] = r.page - 1; loadRuns(); };
+  $('pg-next').onclick = () => { runsPage[env] = r.page + 1; loadRuns(); };
+}
+
+let keepValue = 10;
+async function loadSettings() {
+  const st = await fetch('/api/settings').then(r => r.json());
+  keepValue = st.keepTestImages;
+  $('keep').innerHTML = st.keepOptions.map(n => `<option value="${n}" ${n === keepValue ? 'selected' : ''}>${n || 'all'}</option>`).join('');
+  $('keep').onchange = async e => {
+    const n = Number(e.target.value);
+    if (n && (!keepValue || n < keepValue) && !confirm(`Delete screenshots of test runs older than the last ${n} for every environment and viewport? Reports and logs are kept.`)) { e.target.value = String(keepValue); return; }
+    const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keepTestImages: n }) });
+    const d = await r.json();
+    if (!r.ok) { alert(d.error); e.target.value = String(keepValue); return; }
+    keepValue = d.keepTestImages;
+    loadRuns();
+  };
+}
+
+async function loadRuns() {
+  let r;
+  try {
+    const res = await fetch(`/api/runs?target=${env}&page=${runsPage[env] || 1}&size=${runsSize}`);
+    r = await res.json();
+    if (!res.ok) throw new Error(r.error || res.status);
+  } catch (e) { $('runs').innerHTML = `<div class="empty">Runs unavailable: ${esc(e.message)}</div>`; $('pager').innerHTML = ''; return; }
+  if (r.sets) { sets[env] = r.sets; renderVps(); renderButtons(); }
+  runsPage[env] = r.page || 1;
+  renderPager(r);
+  const rows = r.rows || [];
+  if (!rows.length) { $('runs').innerHTML = '<div class="empty">No runs</div>'; return; }
+  $('runs').innerHTML = `<table><thead><tr><th>Run</th><th>Viewport</th><th>Result</th><th>Status</th><th>Report</th></tr></thead><tbody>${
+    rows.map(row => {
+      const cells = row.items.map(it => itemCells(row, it));
+      const col = i => cells.map(c => `<div class="ln">${i === 1 ? `<span class="${cls(c[1])}">${c[1]}</span>` : c[i]}</div>`).join('');
+      const vps = `<div class="ln"><span class="cmd ${esc(row.command)}">${esc(row.command)}</span></div>${row.items.map(it => `<div class="ln">${esc(keyLabel(it.viewport))}</div>`).join('')}`;
+      const pad = '<div class="ln">&nbsp;</div>';
+      return `<tr class="cmd-${esc(row.command)}"><td>${fmtTime(row.startedAt)}</td><td>${vps}</td><td>${pad}${col(0)}</td><td>${pad}${col(1)}</td><td>${pad}${col(2)}</td></tr>`;
+    }).join('')
+  }</tbody></table>`;
+}
+
+function renderAll() {
+  if (!vpSel[env]) {
+    const saved = store.get('vps_' + env, [store.get('vp_' + env, meta.presets[0].spec)]).filter(v => VP_RE.test(v));
+    vpSel[env] = new Set(saved.length ? saved : [meta.presets[0].spec]);
+  }
+  if (!sets[env]) sets[env] = meta.envs.find(e => e.name === env).sets;
+  if (!customs[env]) {
+    const presets = meta.presets.map(p => p.spec);
+    const fromDisk = sets[env].map(x => x.spec).filter(x => !presets.includes(x));
+    const stored = store.get('custom_' + env, null);
+    customs[env] = (stored || [...fromDisk, ...vpSel[env]]).filter(v => VP_RE.test(v) && !presets.includes(v)).filter((v, i, a) => a.indexOf(v) === i);
+    for (const v of [...vpSel[env]]) if (!presets.includes(v) && !customs[env].includes(v)) vpSel[env].delete(v);
+    if (!vpSel[env].size) vpSel[env].add(meta.presets[0].spec);
+  }
+  if (!selected[env]) selected[env] = new Set(store.get('sel_' + env, scenarios().map(s => s.label)).filter(l => scenarios().some(s => s.label === l)));
+  renderEnvs(); renderVps(); renderList(); loadRuns();
+}
+
+async function approveRun(b) {
+  const labels = b.dataset.labels.split('\n');
+  const list = labels.length > 15 ? [...labels.slice(0, 15), `... +${labels.length - 15} more`] : labels;
+  if (!confirm(`Approve ${labels.length} scenario(s) of ${env} ${keyLabel(b.dataset.vp)} run ${b.dataset.run} as references?\n\n${list.join('\n')}`)) return;
+  const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: env, viewport: b.dataset.vp, runId: b.dataset.run }) });
+  if (!r.ok) alert((await r.json()).error);
+}
+
+async function run(command) {
+  const sel = selected[env];
+  const all = sel.size === scenarios().length;
+  const vps = vpList();
+  const names = vps.map(vpLabel).join(' + ');
+  if (command === 'reference' && all && !confirm(`Replace ALL ${env} references for ${names}?`)) return;
+  const r = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command, target: env, viewports: vps, labels: [...sel] }) });
+  if (!r.ok) {
+    const e = await r.json();
+    const extra = e.missing ? '\n' + Object.entries(e.missing).map(([k, v]) => `${keyLabel(k)}: ${v.length} missing`).join('\n') : e.viewports ? '\n' + e.viewports.map(keyLabel).join('\n') : '';
+    alert(e.error + extra);
+  }
+}
+
+function appendLog(lines) {
+  const el = $('log');
+  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 20;
+  el.textContent += lines.join('\n') + '\n';
+  if (atBottom) el.scrollTop = el.scrollHeight;
+}
+
+async function init() {
+  meta = await fetch('/api/meta').then(r => r.json());
+  runsSize = [10, 20, 50, 100].includes(store.get('runs_size', 10)) ? store.get('runs_size', 10) : 10;
+  env = store.get('env', meta.envs[0].name);
+  if (!meta.envs.some(e => e.name === env)) env = meta.envs[0].name;
+  const s = await fetch('/api/state').then(r => r.json());
+  state = s; $('log').textContent = (s.log || []).join('\n') + (s.log && s.log.length ? '\n' : '');
+  renderAll();
+  loadSettings();
+  ['reference', 'test'].forEach(c => $('b-' + c).onclick = () => run(c));
+  $('runs').addEventListener('click', e => { const b = e.target.closest('.apr'); if (b) approveRun(b); });
+  $('b-stop').onclick = () => fetch('/api/stop', { method: 'POST' });
+  $('search').oninput = renderList;
+  $('c-type').innerHTML = meta.types.map(t => `<option value="${t}">${t}</option>`).join('');
+  $('c-add').onclick = addCustom;
+  $('c-remove').onclick = removeCustom;
+  $('all').onclick = () => { selected[env] = new Set(scenarios().map(s => s.label)); saveSel(); renderList(); };
+  $('none').onclick = () => { selected[env] = new Set(); saveSel(); renderList(); };
+  const es = new EventSource('/api/stream');
+  es.addEventListener('open', () => loadRuns());
+  es.addEventListener('state', e => {
+    const prev = state.running;
+    state = JSON.parse(e.data);
+    if (state.running && !prev) $('log').textContent = '';
+    renderButtons();
+  });
+  es.addEventListener('log', e => appendLog(JSON.parse(e.data)));
+  es.addEventListener('runs', e => { if (JSON.parse(e.data).target === env) loadRuns(); });
+}
+init();
+$('log-clear').onclick = () => { $('log').textContent = ''; fetch('/api/log/clear', { method: 'POST' }).catch(() => {}); };
+</script>
+</body>
+</html>

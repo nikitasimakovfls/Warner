@@ -1,5 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+const { analyze, describe } = require('./shift');
+const { writeRunHtml } = require('./html-report');
+
+const short = r => (r ? describe(r, 3) : '-');
 
 const pad = n => String(n).padStart(2, '0');
 const fmtDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
@@ -16,7 +20,7 @@ function latestRun(testDir) {
   return runs.length ? runs[runs.length - 1] : null;
 }
 
-function rows(report, refDir) {
+function rows(report, refDir, runDir, shifts) {
   return report.tests.map((t, i) => {
     const p = t.pair;
     const diff = p.diff || {};
@@ -24,16 +28,24 @@ function rows(report, refDir) {
     const dim = diff.dimensionDifference || { width: 0, height: 0 };
     const refFile = path.join(refDir, p.fileName);
     const refTime = fs.existsSync(refFile) ? fmtDate(fs.statSync(refFile).mtime) : '-';
+    let status = 'PASS';
+    let shift = null;
+    if (t.status !== 'pass') {
+      try { shift = analyze(refFile, path.join(runDir, p.fileName)); } catch (e) { shift = { status: 'error', note: e.message, shifts: [], changes: [] }; }
+      shifts[p.label] = shift;
+      status = shift.status === 'shift' || shift.status === 'same' ? 'SHIFT' : 'FAIL';
+    }
     return {
       n: i + 1,
       label: p.label,
       url: p.url,
       viewport: p.viewportLabel,
-      status: t.status === 'pass' ? 'PASS' : 'FAIL',
+      status,
       mismatch: `${raw.toFixed(4)}%`,
       threshold: `${p.misMatchThreshold}%`,
       size: dim.width || dim.height ? `${dim.width >= 0 ? '+' : ''}${dim.width} x ${dim.height >= 0 ? '+' : ''}${dim.height} px` : '0',
-      reference: refTime
+      reference: refTime,
+      changes: short(shift)
     };
   });
 }
@@ -45,16 +57,24 @@ function build(target, baseUrl, config, filter) {
   if (!run) return null;
 
   const report = JSON.parse(fs.readFileSync(path.join(testDir, run, 'report.json'), 'utf8'));
-  const data = rows(report, refDir).sort((a, b) => (a.status === b.status ? a.n - b.n : a.status === 'FAIL' ? -1 : 1));
+  const shifts = {};
+  const runDir = path.join(testDir, run);
+  const order = { FAIL: 0, SHIFT: 1, PASS: 2 };
+  const data = rows(report, refDir, runDir, shifts).sort((a, b) => (a.status === b.status ? a.n - b.n : order[a.status] - order[b.status]));
+  fs.writeFileSync(path.join(runDir, 'shift.json'), JSON.stringify(shifts, null, 2));
+  const html = writeRunHtml(runDir, refDir);
   const failed = data.filter(r => r.status === 'FAIL').length;
+  const shifted = data.filter(r => r.status === 'SHIFT').length;
+  const passed = data.length - failed - shifted;
   const viewports = config.viewports.map(v => `${v.label} ${v.width}x${v.height}`).join(', ');
 
   const meta = [
-    ['Result', failed ? 'FAILED' : 'PASSED'],
+    ['Result', failed ? 'FAILED' : shifted ? 'SHIFT ONLY' : 'PASSED'],
     ['Environment', `${target} (${baseUrl})`],
     ['Run', `${runDate(run)} (${run})`],
     ['Scenarios', `${data.length}`],
-    ['Passed', `${data.length - failed}`],
+    ['Passed', `${passed}`],
+    ['Shift only', `${shifted}`],
     ['Failed', `${failed}`],
     ['Viewports', viewports],
     ['Filter', filter || '-'],
@@ -62,7 +82,7 @@ function build(target, baseUrl, config, filter) {
   ];
   const cols = [
     ['#', 'n'], ['Scenario', 'label'], ['URL', 'url'], ['Viewport', 'viewport'], ['Status', 'status'],
-    ['Mismatch', 'mismatch'], ['Threshold', 'threshold'], ['Size diff', 'size'], ['Reference captured', 'reference']
+    ['Mismatch', 'mismatch'], ['Threshold', 'threshold'], ['Size diff', 'size'], ['Reference captured', 'reference'], ['Changes', 'changes']
   ];
 
   const md = [
@@ -74,7 +94,7 @@ function build(target, baseUrl, config, filter) {
     '',
     `| ${cols.map(c => c[0]).join(' | ')} |`,
     `|${cols.map(() => '---').join('|')}|`,
-    ...data.map(r => `| ${cols.map(c => c[1] === 'status' ? `**${r.status}**` : r[c[1]]).join(' | ')} |`),
+    ...data.map(r => `| ${cols.map(c => c[1] === 'status' ? `**${r.status}**` : String(r[c[1]]).replace(/\|/g, '\\|')).join(' | ')} |`),
     ''
   ].join('\n');
 
@@ -93,12 +113,12 @@ function build(target, baseUrl, config, filter) {
     ''
   ].join('\r\n');
 
-  const outDir = path.resolve('reports', target);
+  const outDir = path.resolve('reports', target, ...(config.viewportKey || '').split('/').filter(Boolean));
   fs.mkdirSync(outDir, { recursive: true });
   const base = path.join(outDir, `${target}_${run}`);
   fs.writeFileSync(`${base}.md`, md);
   fs.writeFileSync(`${base}.txt`, txt);
-  return { md: `${base}.md`, txt: `${base}.txt`, failed, total: data.length };
+  return { md: `${base}.md`, txt: `${base}.txt`, html, passed, shifted, failed, total: data.length };
 }
 
 module.exports = { build };

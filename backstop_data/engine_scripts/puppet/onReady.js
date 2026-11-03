@@ -5,7 +5,8 @@ const FREEZE_CSS = `
     caret-color: transparent !important;
     scroll-behavior: auto !important;
   }
-  #onetrust-consent-sdk, #onetrust-banner-sdk, .onetrust-pc-dark-filter {
+  #onetrust-consent-sdk, #onetrust-banner-sdk, .onetrust-pc-dark-filter,
+  #usercentrics-cmp-ui, #usercentrics-root {
     display: none !important;
   }
   html, body {
