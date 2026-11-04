@@ -69,7 +69,7 @@ const pages = [
   { label: 'Spa_Treatments', path: '/discover-warner-breaks/spa-treatments' },
   { label: 'Reserve_Spa_Treatments', path: '/discover-warner-breaks/reserve-spa-treatments' },
   { label: 'Things_To_Do', path: '/discover-warner-breaks/things-to-do-and-activities' },
-  { label: 'Heythrop_Park_Golf_Club', path: '/hotels/heythrop-park-hotel/golf-club' },
+  { label: 'Heythrop_Park_Golf_Club', path: '/hotels/heythrop-park-hotel/golf-club', engineOptions: { gotoParameters: { waitUntil: 'domcontentloaded' } } },
   { label: 'Celebrations', path: '/discover-warner-breaks/celebrations' },
   { label: 'Deals', path: '/deals' },
   { label: 'About', path: '/discover-warner-breaks' },

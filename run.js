@@ -27,9 +27,9 @@ const [command, target, ...rest] = process.argv.slice(2);
 const viewportArg = rest.length && parseViewport(rest[0]) ? rest.shift() : 'desktop';
 const viewport = parseViewport(viewportArg);
 const filter = rest[0];
-const usage = `Usage: npm run <${Object.keys(COMMANDS).join('|')}> <${Object.keys(ENVIRONMENTS).join('|')}> [desktop|mobile|desktop:WxH|mobile:WxH] [filter]`;
+const usage = `Usage: npm run <${Object.keys(COMMANDS).join('|')}> <${Object.keys(ENVIRONMENTS).join('|')}> [desktop|tablet|mobile|<type>:WxH] [filter]`;
 
-if (!(command in COMMANDS) || !ENVIRONMENTS[target] || (rest.length && /^(desktop|mobile)(:|$)/i.test(rest[0]) && !parseViewport(rest[0]))) {
+if (!(command in COMMANDS) || !ENVIRONMENTS[target] || (rest.length && /^(desktop|tablet|mobile)(:|$)/i.test(rest[0]) && !parseViewport(rest[0]))) {
   console.error(usage);
   process.exit(1);
 }
@@ -141,6 +141,12 @@ if (command === 'summary') {
   require('backstopjs')(COMMANDS[command], { config, filter })
     .catch(() => { process.exitCode = 1; })
     .finally(() => {
+      if (command === 'reference') {
+        const failed = history.missingRefs(path.resolve(config.paths.bitmaps_reference), selectedLabels, viewport.type);
+        failed.forEach(l => console.log(`reference failed: ${l}`));
+        console.log(`reference: ${selectedLabels.length - failed.length}/${selectedLabels.length} | viewport: ${viewport.key}`);
+        if (failed.length) process.exitCode = 1;
+      }
       if (command === 'test') {
         writeSummary();
         const keep = settings.load().keepTestImages;

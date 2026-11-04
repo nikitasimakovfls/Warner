@@ -17,6 +17,8 @@ npm run ui
 Opens http://127.0.0.1:3210 (local only). Pick the environment, one or more viewports (presets or custom) and scenarios, then run Reference / Test; selected viewports run one after another. The log streams live. Port: `UI_PORT` env variable.
 
 - Approve: the `approve` button in the Report column of a test run copies the screenshots of that run's failed and SHIFT scenarios into the references. It is shown only for the latest test run of an environment and viewport with status `FAILED` or `SHIFT`, with screenshots still on disk, and only while none of those references changed after the run.
+- References: a viewport row is green when every scenario has a reference and yellow otherwise; BackstopJS error placeholders (written when a capture fails) count as missing. "Clear refs" under the viewport list deletes all reference screenshots of the selected viewports.
+- Custom viewports: name, width and height in the Viewport card, then Add. The type follows the width (`< 768` mobile, `768-1023` tablet, `>= 1024` desktop). The list is stored in `reports\viewports.json` and shared by all browsers; Remove only drops it from the list, references stay on disk.
 - Screenshot retention: "Keep images of last N runs" in the Test runs header (3 / 5 / 10 / 20 / 50 / all, default 10, stored in `reports\settings.json`). After every test run, older runs of the same environment and viewport lose their `.png` files and `html_report`; `report.json`, `shift.json`, `txt`, `md` and `log` are kept, and their `html` link is greyed out. The latest run is always kept.
 - Test is disabled while any selected scenario has no reference for a selected viewport (`npm run test` exits with code 2 in the same case).
 - The runs table lists every Reference / Test / Approve launch (from `reports\history.jsonl`, written by the UI and by `npm run …`) plus older test runs, newest first, paginated (10 / 20 / 50 / 100 rows per page): Run, Viewport (command and viewports), Result, Status (`Success` / `SHIFT` / `FAILED` / `STOPPED`) and Report (`html`, `txt`, `md` for test runs, `log` for every launch: `reports\<env>\<type>\<WxH>\<env>_<run>.log` for tests, `<env>_<command>_<YYYYMMDD-HHMMSS>.log` otherwise). The `html` link opens a BackstopJS report for that specific run, stored in `backstop_data\bitmaps_test\<env>\<type>\<WxH>\<run>\html_report\`.
@@ -25,7 +27,7 @@ Opens http://127.0.0.1:3210 (local only). Pick the environment, one or more view
 
 Format: `npm run <command> <prep|prod> [viewport] [filter]`
 
-Viewport: `desktop` (1920x1080, default), `mobile` (414x896), or custom `desktop:WxH` / `mobile:WxH`
+Viewport: `desktop` (1920x1080, default), `tablet` (768x1024), `mobile` (414x896), or custom `desktop:WxH` / `tablet:WxH` / `mobile:WxH`. Tablet and mobile use touch emulation and a tablet / phone user agent (Android).
 
 | Command | Description |
 |---|---|
@@ -86,3 +88,4 @@ After every `test` run, each failed scenario is re-checked row by row (`shift.js
 | Page list (promo banner, header and footer hidden) | `backstop.config.js` → `pages` |
 | Environment URLs | `environments.js` |
 | Viewport presets | `viewports.js` |
+| Custom viewports | `reports\viewports.json` (managed from the UI) |

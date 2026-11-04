@@ -60,8 +60,13 @@ main { display: grid; grid-template-columns: 380px 1fr; gap: 16px; padding: 16px
   50% { opacity: .25; box-shadow: 0 0 0 5px color-mix(in srgb, var(--warn) 0%, transparent); }
 }
 .meta { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.meta.took { margin-top: 2px; }
+.meta:empty { display: none; }
 pre { margin: 0; background: var(--log-bg); color: var(--log-text); border-radius: 6px; padding: 10px; height: 340px; overflow: auto; font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
+#runs table { table-layout: fixed; min-width: 780px; }
+#runs td .ln { overflow: hidden; text-overflow: ellipsis; }
+#runs td:first-child { white-space: nowrap; }
 th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
 th { color: var(--muted); font-weight: 600; font-size: 12px; }
 td a { color: var(--accent); text-decoration: none; margin-right: 8px; }
@@ -82,6 +87,11 @@ td a { color: var(--accent); text-decoration: none; margin-right: 8px; }
 .vp.active .ck::after { content: "\2713"; }
 .hint { font-size: 12px; color: var(--warn); margin-top: 8px; }
 .hint:empty { display: none; }
+.rhead { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.types { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; }
+.types label { display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--muted); }
+.types label.on { color: var(--text); }
+.types input { margin: 0; accent-color: var(--accent); }
 .keep { font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--muted); display: flex; align-items: center; gap: 6px; }
 .keep select { padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
 .link.apr { color: #8b5cf6; font-weight: 600; font-size: 13px; border: 1px solid #8b5cf6; border-radius: 999px; padding: 0 8px; margin-left: 2px; }
@@ -103,10 +113,16 @@ tr.cmd-approve td:first-child { box-shadow: inset 4px 0 0 #8b5cf6; }
 .cmd.reference { border-color: var(--accent); color: var(--accent); }
 .cmd.approve { border-color: #8b5cf6; color: #8b5cf6; }
 td .ln + .ln { margin-top: 4px; }
+.vp .t { font-size: 12px; color: var(--muted); }
+.vphead { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin: 2px 0 -2px; }
+.vpsep { border-top: 1px solid var(--border); margin: 6px 0 2px; }
+.vpnone { font-size: 12px; color: var(--muted); padding: 2px 0 4px; }
 .vp .r { margin-left: auto; font-size: 12px; color: var(--muted); }
-.custom { display: grid; grid-template-columns: 1fr 1fr auto 1fr; gap: 6px; align-items: center; margin-top: 8px; }
+.custom { display: grid; grid-template-columns: 1.4fr 1fr auto 1fr; gap: 6px; align-items: center; margin-top: 8px; }
 .custom select, .custom input { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
 .vpbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.link.clear:disabled { opacity: .35; cursor: not-allowed; text-decoration: none; }
+.cmd.clear-refs { border-color: var(--fail); color: var(--fail); }
 .btn.add { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .btn.remove { background: var(--fail); color: #ffffff; border-color: var(--fail); }
 .err { color: var(--fail); font-size: 12px; margin-top: 6px; min-height: 1em; }
@@ -124,10 +140,10 @@ td .ln + .ln { margin-top: 4px; }
       <div id="base" class="base"></div>
     </section>
     <section class="card">
-      <h2>Viewport</h2>
+      <h2 class="cardhead">Viewport <button class="link clear" id="c-clear">Clear refs</button></h2>
       <div id="vps" class="vps"></div>
       <div class="custom">
-        <select id="c-type"></select>
+        <input id="c-name" type="text" maxlength="40" placeholder="name">
         <input id="c-w" type="number" min="200" max="7680" placeholder="width">
         <span>x</span>
         <input id="c-h" type="number" min="200" max="4320" placeholder="height">
@@ -160,13 +176,14 @@ td .ln + .ln { margin-top: 4px; }
       </div>
       <div id="hint" class="hint"></div>
       <div id="runmeta" class="meta"></div>
+      <div id="took" class="meta took"></div>
     </section>
     <section class="card">
       <h2 class="cardhead">Log <button class="link clear" id="log-clear">Clear</button></h2>
       <pre id="log"></pre>
     </section>
     <section class="card">
-      <h2 class="cardhead">Test runs <label class="keep">Keep images of last <select id="keep"></select> runs</label></h2>
+      <h2 class="cardhead"><span class="rhead">Test runs <span id="types" class="types"></span></span><label class="keep">Keep images of last <select id="keep"></select> runs</label></h2>
       <div id="runs"></div>
       <div id="pager" class="pager"></div>
     </section>
@@ -175,7 +192,7 @@ td .ln + .ln { margin-top: 4px; }
 <script>
 const $ = id => document.getElementById(id);
 let runsPage = {}, runsSize = 10;
-let meta = null, env = null, state = {}, selected = {}, vpSel = {}, sets = {}, customs = {};
+let meta = null, env = null, state = {}, selected = {}, vpSel = {}, sets = {}, customs = [];
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
@@ -183,20 +200,23 @@ const store = {
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 function scenarios() { return meta.envs.find(e => e.name === env).scenarios; }
-const VP_RE = /^(desktop|mobile):(\d{2,5})x(\d{2,5})$/;
-const keyLabel = key => String(key || '').replace('/', ' ');
+const VP_RE = /^(desktop|tablet|mobile):(\d{2,5})x(\d{2,5})$/;
+const customBySpec = spec => customs.find(c => c.spec === spec);
+const keyLabel = key => { const c = customBySpec(String(key || '').replace('/', ':')); return c ? `${c.name} ${String(key).split('/')[1]}` : String(key || '').replace('/', ' '); };
 const vpList = () => [...vpSel[env]];
-const vpLabel = spec => { const m = VP_RE.exec(spec); return m ? `${m[1][0].toUpperCase() + m[1].slice(1)} ${m[2]}x${m[3]}` : spec; };
+const vpLabel = spec => { const c = customBySpec(spec); if (c) return c.name; const m = VP_RE.exec(spec); return m ? `${m[1][0].toUpperCase() + m[1].slice(1)} ${m[2]}x${m[3]}` : spec; };
+const vpMeta = spec => { const m = VP_RE.exec(spec); return m ? `${m[2]}x${m[3]} · ${m[1]}` : ''; };
 
 function renderVps() {
   const presets = meta.presets.map(p => p.spec);
-  const custom = customs[env];
+  const custom = customs.map(c => c.spec);
   const labels = scenarios().map(x => x.label);
   const have = spec => { const x = (sets[env] || []).find(v => v.spec === spec); const h = new Set(x ? x.labels : []); return labels.filter(l => h.has(l)).length; };
   const refs = spec => { const n = have(spec); return n ? `${n}/${labels.length} refs` : 'no refs'; };
   const refState = spec => (have(spec) === labels.length ? 'full' : 'part');
   $('c-remove').disabled = !vpList().some(v => custom.includes(v));
-  $('vps').innerHTML = [...presets, ...custom].map(spec => `<div class="vp ${refState(spec)} ${vpSel[env].has(spec) ? 'active' : ''}" data-spec="${spec}" title="${refState(spec) === 'full' ? 'all references captured' : 'references missing'}"><span class="ck"></span><span class="n">${vpLabel(spec)}</span>${presets.includes(spec) ? '' : '<span>custom</span>'}<span class="r">${refs(spec)}</span></div>`).join('');
+  const card = spec => `<div class="vp ${refState(spec)} ${vpSel[env].has(spec) ? 'active' : ''}" data-spec="${spec}" title="${refState(spec) === 'full' ? 'all references captured' : 'references missing'}"><span class="ck"></span><span class="n">${esc(vpLabel(spec))}</span>${presets.includes(spec) ? '' : `<span class="t">${vpMeta(spec)}</span>`}<span class="r">${refs(spec)}</span></div>`;
+  $('vps').innerHTML = `<div class="vphead">Default</div>${presets.map(card).join('')}<div class="vpsep"></div><div class="vphead">Custom</div>${custom.length ? custom.map(card).join('') : '<div class="vpnone">No custom viewports</div>'}`;
   $('vps').querySelectorAll('.vp').forEach(d => d.onclick = () => {
     const sp = d.dataset.spec, set = vpSel[env];
     if (set.has(sp)) { if (set.size > 1) set.delete(sp); } else set.add(sp);
@@ -204,28 +224,53 @@ function renderVps() {
   });
 }
 
-function saveVps() { store.set('vps_' + env, vpList()); store.set('custom_' + env, customs[env]); }
+function saveVps() { store.set('vps_' + env, vpList()); }
 
-function addCustom() {
-  const t = $('c-type').value, w = Number($('c-w').value), h = Number($('c-h').value);
-  if (!(Number.isInteger(w) && Number.isInteger(h) && w >= 200 && w <= 7680 && h >= 200 && h <= 4320)) { $('c-err').textContent = 'width 200-7680, height 200-4320'; return; }
+function pruneSelection() {
+  const known = new Set([...meta.presets.map(p => p.spec), ...customs.map(c => c.spec)]);
+  for (const e of Object.keys(vpSel)) {
+    for (const v of [...vpSel[e]]) if (!known.has(v)) vpSel[e].delete(v);
+    if (!vpSel[e].size) vpSel[e].add(meta.presets[0].spec);
+  }
+}
+
+async function addCustom() {
+  const name = $('c-name').value.trim(), w = Number($('c-w').value), h = Number($('c-h').value);
+  if (!name) { $('c-err').textContent = 'name is required'; return; }
+  const r = await fetch('/api/viewports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, width: w, height: h }) });
+  const d = await r.json();
+  if (!r.ok) { $('c-err').textContent = d.error; return; }
   $('c-err').textContent = '';
-  const spec = `${t}:${w}x${h}`;
-  if (!meta.presets.some(p => p.spec === spec) && !customs[env].includes(spec)) customs[env].push(spec);
-  vpSel[env].add(spec); $('c-w').value = ''; $('c-h').value = '';
+  customs = d.customs;
+  vpSel[env].add(d.spec);
+  $('c-name').value = ''; $('c-w').value = ''; $('c-h').value = '';
   saveVps(); renderVps(); renderButtons();
 }
 
-function removeCustom() {
-  const gone = vpList().filter(v => customs[env].includes(v));
+async function removeCustom() {
+  const gone = vpList().filter(v => customBySpec(v));
   if (!gone.length) return;
-  const names = gone.map(vpLabel).join(', ');
-  if (!confirm(`Remove ${names} from the list? References on disk are kept.`)) return;
-  customs[env] = customs[env].filter(v => !gone.includes(v));
-  gone.forEach(v => vpSel[env].delete(v));
-  if (!vpSel[env].size) vpSel[env].add(meta.presets[0].spec);
+  if (!confirm(`Remove ${gone.map(vpLabel).join(', ')} from the list? References on disk are kept.`)) return;
+  const r = await fetch('/api/viewports/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ specs: gone }) });
+  const d = await r.json();
+  customs = d.customs;
+  pruneSelection();
   $('c-err').textContent = '';
   saveVps(); renderVps(); renderButtons();
+}
+
+async function migrateLocalCustoms() {
+  for (const e of meta.envs.map(x => x.name)) {
+    const local = store.get('custom_' + e, null);
+    if (!Array.isArray(local)) continue;
+    for (const spec of local) {
+      const m = VP_RE.exec(spec);
+      if (!m || customBySpec(spec) || meta.presets.some(p => p.spec === spec)) continue;
+      const r = await fetch('/api/viewports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: `${m[1][0].toUpperCase() + m[1].slice(1)} ${m[2]}x${m[3]}`, width: Number(m[2]), height: Number(m[3]) }) });
+      if (r.ok) customs = (await r.json()).customs;
+    }
+    try { localStorage.removeItem('custom_' + e); } catch (err) {}
+  }
 }
 
 function renderEnvs() {
@@ -266,11 +311,23 @@ function missingRefs() {
   return out;
 }
 
+function updateTook() {
+  const el = $('took');
+  if (!state.startedAt) { el.textContent = ''; return; }
+  const end = state.running ? Date.now() : state.finishedAt ? new Date(state.finishedAt).getTime() : null;
+  if (!end) { el.textContent = ''; return; }
+  const min = Math.max(0, end - new Date(state.startedAt).getTime()) / 60000;
+  const text = `${min.toFixed(1)} minute${min.toFixed(1) === '1.0' ? '' : 's'}`;
+  el.textContent = state.running ? `Running for ${text}` : `It took ${text}`;
+}
+setInterval(() => { if (state.running) updateTook(); }, 3000);
+
 function renderButtons() {
   const busy = !!state.running;
   const none = !selected[env] || selected[env].size === 0;
   const miss = none ? [] : missingRefs();
   $('b-reference').disabled = busy || none;
+  $('c-clear').disabled = busy || !refCount();
   document.querySelectorAll('.apr').forEach(b => b.disabled = busy);
   $('b-test').disabled = busy || none || miss.length > 0;
   $('b-stop').disabled = !busy || state.stopped;
@@ -289,10 +346,12 @@ function renderButtons() {
   if (state.finishedAt) m.push(`finished ${new Date(state.finishedAt).toLocaleString()}`);
   if (state.labels && state.labels.length) m.push(`${state.labels.length} scenario(s)`);
   $('runmeta').textContent = m.join(' | ');
+  updateTook();
 }
 
 const pad2 = n => String(n).padStart(2, '0');
 const fmtTime = iso => { const d = new Date(iso); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
+const fmtDur = ms => (ms === null || ms === undefined || isNaN(ms) ? '-' : ms < 6000 ? '<0.1 min' : `${(ms / 60000).toFixed(1)} min`);
 const cls = st => (st === 'FAILED' || st === 'STOPPED' ? 'failc' : st === 'SHIFT' ? 'shiftc' : 'okc');
 
 function itemCells(row, it) {
@@ -310,8 +369,21 @@ function itemCells(row, it) {
     return [res, r.status, files];
   }
   const st = it.exitCode === 0 ? 'Success' : 'FAILED';
-  const from = row.command === 'approve' && it.approvedRun ? ` <span class="muted">from ${it.approvedRun.replace(/^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})$/, '$1-$2-$3 $4:$5:$6')}</span>` : '';
-  return [`${row.scenarios} scenario(s)${from}`, st, logLink || '-'];
+  if (row.command === 'clear-refs') return [`${it.scenarios ?? row.scenarios} refs removed`, 'Success', '-'];
+  const from = row.command === 'approve' && it.approvedRun ? ` <span class="muted" title="run ${it.approvedRun}">from ${it.approvedRun.replace(/^\d{4}(\d{2})(\d{2})-(\d{2})(\d{2})\d{2}$/, '$1-$2 $3:$4')}</span>` : '';
+  return [`${it.scenarios ?? row.scenarios}${from}`, st, logLink || '-'];
+}
+
+const RUN_TYPES = ['test', 'reference', 'approve', 'clear-refs'];
+let runTypes = new Set(RUN_TYPES);
+function renderTypes() {
+  $('types').innerHTML = RUN_TYPES.map(t => `<label class="${runTypes.has(t) ? 'on' : ''}"><input type="checkbox" data-t="${t}" ${runTypes.has(t) ? 'checked' : ''}>${t}</label>`).join('');
+  $('types').querySelectorAll('input').forEach(i => i.onchange = () => {
+    i.checked ? runTypes.add(i.dataset.t) : runTypes.delete(i.dataset.t);
+    store.set('run_types', [...runTypes]);
+    for (const e of Object.keys(runsPage)) runsPage[e] = 1;
+    renderTypes(); loadRuns();
+  });
 }
 
 function renderPager(r) {
@@ -342,7 +414,7 @@ async function loadSettings() {
 async function loadRuns() {
   let r;
   try {
-    const res = await fetch(`/api/runs?target=${env}&page=${runsPage[env] || 1}&size=${runsSize}`);
+    const res = await fetch(`/api/runs?target=${env}&page=${runsPage[env] || 1}&size=${runsSize}&types=${[...runTypes].join(',')}`);
     r = await res.json();
     if (!res.ok) throw new Error(r.error || res.status);
   } catch (e) { $('runs').innerHTML = `<div class="empty">Runs unavailable: ${esc(e.message)}</div>`; $('pager').innerHTML = ''; return; }
@@ -351,13 +423,19 @@ async function loadRuns() {
   renderPager(r);
   const rows = r.rows || [];
   if (!rows.length) { $('runs').innerHTML = '<div class="empty">No runs</div>'; return; }
-  $('runs').innerHTML = `<table><thead><tr><th>Run</th><th>Viewport</th><th>Result</th><th>Status</th><th>Report</th></tr></thead><tbody>${
+  $('runs').innerHTML = `<table><colgroup><col style="width:17%"><col style="width:19%"><col style="width:10%"><col style="width:20%"><col style="width:11%"><col style="width:23%"></colgroup><thead><tr><th>Run</th><th>Viewport</th><th>Duration</th><th>Scenarios</th><th>Status</th><th>Report</th></tr></thead><tbody>${
     rows.map(row => {
       const cells = row.items.map(it => itemCells(row, it));
       const col = i => cells.map(c => `<div class="ln">${i === 1 ? `<span class="${cls(c[1])}">${c[1]}</span>` : c[i]}</div>`).join('');
       const vps = `<div class="ln"><span class="cmd ${esc(row.command)}">${esc(row.command)}</span></div>${row.items.map(it => `<div class="ln">${esc(keyLabel(it.viewport))}</div>`).join('')}`;
       const pad = '<div class="ln">&nbsp;</div>';
-      return `<tr class="cmd-${esc(row.command)}"><td>${fmtTime(row.startedAt)}</td><td>${vps}</td><td>${pad}${col(0)}</td><td>${pad}${col(1)}</td><td>${pad}${col(2)}</td></tr>`;
+      const dur = it => (it.startedAt && it.finishedAt ? new Date(it.finishedAt) - new Date(it.startedAt) : null);
+      const durs = row.items.map(dur);
+      const starts = row.items.map(it => it.startedAt).filter(Boolean).map(d => new Date(d).getTime());
+      const ends = row.items.map(it => it.finishedAt).filter(Boolean).map(d => new Date(d).getTime());
+      const total = starts.length && ends.length === row.items.length ? Math.max(...ends) - Math.min(...starts) : null;
+      const durCol = `<div class="ln"><b>${fmtDur(total)}</b></div>${durs.map(d => `<div class="ln">${row.items.length > 1 ? fmtDur(d) : '&nbsp;'}</div>`).join('')}`;
+      return `<tr class="cmd-${esc(row.command)}"><td>${fmtTime(row.startedAt)}</td><td>${vps}</td><td>${durCol}</td><td>${pad}${col(0)}</td><td>${pad}${col(1)}</td><td>${pad}${col(2)}</td></tr>`;
     }).join('')
   }</tbody></table>`;
 }
@@ -368,16 +446,23 @@ function renderAll() {
     vpSel[env] = new Set(saved.length ? saved : [meta.presets[0].spec]);
   }
   if (!sets[env]) sets[env] = meta.envs.find(e => e.name === env).sets;
-  if (!customs[env]) {
-    const presets = meta.presets.map(p => p.spec);
-    const fromDisk = sets[env].map(x => x.spec).filter(x => !presets.includes(x));
-    const stored = store.get('custom_' + env, null);
-    customs[env] = (stored || [...fromDisk, ...vpSel[env]]).filter(v => VP_RE.test(v) && !presets.includes(v)).filter((v, i, a) => a.indexOf(v) === i);
-    for (const v of [...vpSel[env]]) if (!presets.includes(v) && !customs[env].includes(v)) vpSel[env].delete(v);
-    if (!vpSel[env].size) vpSel[env].add(meta.presets[0].spec);
-  }
+  pruneSelection();
   if (!selected[env]) selected[env] = new Set(store.get('sel_' + env, scenarios().map(s => s.label)).filter(l => scenarios().some(s => s.label === l)));
   renderEnvs(); renderVps(); renderList(); loadRuns();
+}
+
+function refCount() {
+  return vpList().reduce((n, spec) => { const x = (sets[env] || []).find(v => v.spec === spec); return n + (x ? x.labels.length : 0); }, 0);
+}
+
+async function clearRefs() {
+  const vps = vpList();
+  const n = refCount();
+  if (!confirm(`Delete ${n} reference screenshot(s) of ${env} for ${vps.map(vpLabel).join(' + ')}? This cannot be undone.`)) return;
+  const r = await fetch('/api/refs/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: env, viewports: vps }) });
+  const d = await r.json();
+  if (!r.ok) { alert(d.error); return; }
+  loadRuns();
 }
 
 async function approveRun(b) {
@@ -392,8 +477,14 @@ async function run(command) {
   const sel = selected[env];
   const all = sel.size === scenarios().length;
   const vps = vpList();
-  const names = vps.map(vpLabel).join(' + ');
-  if (command === 'reference' && all && !confirm(`Replace ALL ${env} references for ${names}?`)) return;
+  if (command === 'reference') {
+    const existing = vps.map(spec => {
+      const x = (sets[env] || []).find(v => v.spec === spec);
+      const have = new Set(x ? x.labels : []);
+      return { spec, n: [...sel].filter(l => have.has(l)).length };
+    }).filter(e => e.n);
+    if (existing.length && !confirm(`Replace existing ${env} references: ${existing.map(e => `${vpLabel(e.spec)} (${e.n})`).join(', ')}?${all ? '\n\nThe viewport folders are cleared before capture.' : ''}`)) return;
+  }
   const r = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command, target: env, viewports: vps, labels: [...sel] }) });
   if (!r.ok) {
     const e = await r.json();
@@ -411,7 +502,11 @@ function appendLog(lines) {
 
 async function init() {
   meta = await fetch('/api/meta').then(r => r.json());
+  customs = meta.customs || [];
+  await migrateLocalCustoms();
   runsSize = [10, 20, 50, 100].includes(store.get('runs_size', 10)) ? store.get('runs_size', 10) : 10;
+  runTypes = new Set(store.get('run_types', RUN_TYPES).filter(t => RUN_TYPES.includes(t)));
+  renderTypes();
   env = store.get('env', meta.envs[0].name);
   if (!meta.envs.some(e => e.name === env)) env = meta.envs[0].name;
   const s = await fetch('/api/state').then(r => r.json());
@@ -422,9 +517,9 @@ async function init() {
   $('runs').addEventListener('click', e => { const b = e.target.closest('.apr'); if (b) approveRun(b); });
   $('b-stop').onclick = () => fetch('/api/stop', { method: 'POST' });
   $('search').oninput = renderList;
-  $('c-type').innerHTML = meta.types.map(t => `<option value="${t}">${t}</option>`).join('');
   $('c-add').onclick = addCustom;
   $('c-remove').onclick = removeCustom;
+  $('c-clear').onclick = clearRefs;
   $('all').onclick = () => { selected[env] = new Set(scenarios().map(s => s.label)); saveSel(); renderList(); };
   $('none').onclick = () => { selected[env] = new Set(); saveSel(); renderList(); };
   const es = new EventSource('/api/stream');

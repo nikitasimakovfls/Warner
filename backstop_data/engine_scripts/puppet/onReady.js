@@ -18,6 +18,13 @@ const FREEZE_CSS = `
   ::-webkit-scrollbar {
     display: none !important;
   }
+  .apiVideoBlock iframe {
+    display: none !important;
+  }
+  .apiVideoBlock .apiVideoBlockLink,
+  .apiVideoBlock .apiVideoBlockLink img {
+    visibility: visible !important;
+  }
 `;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -33,6 +40,13 @@ module.exports = async (page, scenario, vp) => {
   console.log(`${scenario.label} | ${vp.label} | ${actualUrl}`);
 
   await page.addStyleTag({ content: FREEZE_CSS });
+
+  await page.evaluate(() => {
+    document.querySelectorAll('.apiVideoBlock').forEach(block => {
+      block.querySelectorAll('iframe').forEach(f => f.remove());
+      block.classList.remove('videoPlaying');
+    });
+  });
 
   if (Array.isArray(scenario.removeSelectors) && scenario.removeSelectors.length) {
     await page.addStyleTag({

@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const ENVIRONMENTS = require('./environments');
 const { PRESETS, TYPES, parseViewport } = require('./viewports');
 const history = require('./history');
+const customViewports = require('./custom-viewports');
 const settings = require('./settings');
 const { pruneAll, hasImages, mb } = require('./prune');
 
@@ -83,8 +84,8 @@ function listSets(target) {
     for (const size of fs.readdirSync(tdir)) {
       const vp = parseViewport(`${type}:${size}`);
       if (!vp) continue;
-      const files = fs.readdirSync(path.join(tdir, size)).filter(f => f.endsWith('.png'));
-      const labels = files.map(f => f.replace(/_(Desktop|Mobile)\.png$/, ''));
+      const files = fs.readdirSync(path.join(tdir, size)).filter(f => f.endsWith('.png') && history.hasRef(path.join(tdir, size, f)));
+      const labels = files.map(f => f.replace(/_(Desktop|Tablet|Mobile)\.png$/, ''));
       sets.push({ spec: vp.spec, key: vp.key, type, size: vp.size, labels });
     }
   }
@@ -98,7 +99,7 @@ const runIdToIso = id => {
   return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]).toISOString();
 };
 
-function listRows(target, page, size) {
+function listRows(target, page, size, types) {
   const tests = new Map();
   const base = path.join(ROOT, 'backstop_data', 'bitmaps_test', target);
   for (const type of TYPES) {
@@ -120,11 +121,12 @@ function listRows(target, page, size) {
     if (e.startedAt < g.startedAt) g.startedAt = e.startedAt;
     const runKey = e.runId && tests.has(`${e.viewport}|${e.runId}`) ? `${e.viewport}|${e.runId}` : null;
     if (runKey) used.add(runKey);
-    g.items.push({ viewport: e.viewport, exitCode: e.exitCode, stopped: !!e.stopped, runKey, logRel: e.log || null, approvedRun: e.approvedRun || null });
+    g.items.push({ viewport: e.viewport, exitCode: e.exitCode, stopped: !!e.stopped, runKey, logRel: e.log || null, approvedRun: e.approvedRun || null, scenarios: e.scenarios, startedAt: e.startedAt || null, finishedAt: e.finishedAt || null });
   }
   const rows = [...groups.values()];
   for (const [k, t] of tests) if (!used.has(k)) rows.push({ startedAt: runIdToIso(t.id), command: 'test', scenarios: null, items: [{ viewport: t.vp.key, exitCode: null, stopped: false, runKey: k, logRel: null }] });
   rows.sort((a, b) => (a.startedAt < b.startedAt ? 1 : a.startedAt > b.startedAt ? -1 : 0));
+  if (types) rows.splice(0, rows.length, ...rows.filter(r => types.has(r.command)));
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / size));
   const cur = Math.min(Math.max(1, page), pages);
@@ -136,7 +138,7 @@ function listRows(target, page, size) {
       const run = t ? runInfo(target, t.vp, t.id) : null;
       if (run) run.approvable = latest.get(t.vp.key) === t.id && isApprovable(target, t.vp, run);
       const log = it.logRel && fs.existsSync(path.join(ROOT, 'reports', ...it.logRel.split('/'))) ? `/reports/${it.logRel}` : run ? run.log : null;
-      return { viewport: it.viewport, exitCode: it.exitCode, stopped: it.stopped, run, log, approvedRun: it.approvedRun || null };
+      return { viewport: it.viewport, exitCode: it.exitCode, stopped: it.stopped, run, log, approvedRun: it.approvedRun || null, scenarios: it.scenarios, startedAt: it.startedAt || null, finishedAt: it.finishedAt || null };
     });
     const scenarios = row.scenarios === null ? (items[0].run ? items[0].run.total : 0) : row.scenarios;
     return { startedAt: row.startedAt, command: row.command, scenarios, items };
@@ -307,7 +309,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && p === '/api/meta') {
       const envs = Object.entries(ENVIRONMENTS).map(([name, base]) => ({ name, base, scenarios: loadScenarios(name), sets: listSets(name) }));
       const presets = Object.values(PRESETS).map(p => parseViewport(`${p.type}:${p.width}x${p.height}`));
-      return sendJson(res, 200, { envs, presets, types: TYPES });
+      return sendJson(res, 200, { envs, presets, types: TYPES, customs: customViewports.load() });
     }
     if (req.method === 'GET' && p === '/api/state') return sendJson(res, 200, { ...publicState(), log: state.log });
     if (req.method === 'GET' && p === '/api/runs') {
@@ -315,7 +317,9 @@ const server = http.createServer(async (req, res) => {
       if (!ENVIRONMENTS[target]) return sendJson(res, 400, { error: 'unknown target' });
       const size = Math.min(Math.max(Number(url.searchParams.get('size')) || 10, 1), 200);
       const page = Number(url.searchParams.get('page')) || 1;
-      return sendJson(res, 200, { ...listRows(target, page, size), sets: listSets(target) });
+      const t = url.searchParams.get('types');
+      const types = t === null ? null : new Set(t.split(',').filter(Boolean));
+      return sendJson(res, 200, { ...listRows(target, page, size, types), sets: listSets(target) });
     }
     if (req.method === 'GET' && p === '/api/stream') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive' });
@@ -346,6 +350,39 @@ const server = http.createServer(async (req, res) => {
       startRun('approve', target, [chk.vp], labels, filter, { APPROVE_RUN: runId });
       return sendJson(res, 200, publicState());
     }
+    if (req.method === 'POST' && p === '/api/viewports') {
+      const { name, width, height } = await readBody(req);
+      const r = customViewports.add(name, width, height);
+      if (r.error) return sendJson(res, 400, r);
+      return sendJson(res, 200, { customs: r.list, spec: r.spec });
+    }
+    if (req.method === 'POST' && p === '/api/viewports/remove') {
+      const { specs } = await readBody(req);
+      return sendJson(res, 200, { customs: customViewports.remove(Array.isArray(specs) ? specs : []) });
+    }
+    if (req.method === 'POST' && p === '/api/refs/clear') {
+      if (state.running) return sendJson(res, 409, { error: 'run in progress' });
+      const { target, viewports } = await readBody(req);
+      const vps = (Array.isArray(viewports) ? [...new Set(viewports)] : []).map(parseViewport);
+      if (!ENVIRONMENTS[target] || !vps.length || vps.some(v => !v)) return sendJson(res, 400, { error: 'bad target or viewport' });
+      const job = new Date().toISOString();
+      const result = [];
+      for (const vp of vps) {
+        const dir = refDirOf(target, vp.key);
+        const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.png')) : [];
+        let bytes = 0;
+        for (const f of files) {
+          const file = path.join(dir, f);
+          bytes += fs.statSync(file).size;
+          fs.rmSync(file, { force: true });
+        }
+        pushLog(`clear refs: ${target} ${vp.key} | ${files.length} file(s) | ${mb(bytes)}`);
+        history.append({ job, command: 'clear-refs', target, viewport: vp.key, filter: null, scenarios: files.length, startedAt: job, finishedAt: new Date().toISOString(), exitCode: 0, stopped: false, runId: null, log: null });
+        result.push({ viewport: vp.key, files: files.length, bytes });
+      }
+      broadcast('runs', { target });
+      return sendJson(res, 200, { result });
+    }
     if (req.method === 'POST' && p === '/api/stop') {
       stopRun();
       return sendJson(res, 200, { ok: true });
@@ -366,7 +403,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { ok: true });
     }
     if (req.method === 'GET' && p.startsWith('/run-html/')) {
-      const m = /^\/run-html\/([^/]+)\/(desktop|mobile)\/(\d{2,5}x\d{2,5})\/(\d{8}-\d{6})$/.exec(p);
+      const m = /^\/run-html\/([^/]+)\/(desktop|tablet|mobile)\/(\d{2,5}x\d{2,5})\/(\d{8}-\d{6})$/.exec(p);
       const vp = m && parseViewport(`${m[2]}:${m[3]}`);
       if (!m || !ENVIRONMENTS[m[1]] || !vp) return sendJson(res, 400, { error: 'bad run' });
       const key = [m[1], ...vp.key.split('/')];

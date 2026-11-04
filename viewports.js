@@ -1,10 +1,12 @@
 const PRESETS = {
   desktop: { type: 'desktop', width: 1920, height: 1080 },
+  tablet: { type: 'tablet', width: 768, height: 1024 },
   mobile: { type: 'mobile', width: 414, height: 896 }
 };
 
-const TYPES = ['desktop', 'mobile'];
-const SPEC_RE = /^(desktop|mobile)(?::(\d{2,5})x(\d{2,5}))?$/i;
+const TYPES = ['desktop', 'tablet', 'mobile'];
+const TYPE_RE = '(desktop|tablet|mobile)';
+const SPEC_RE = new RegExp(`^${TYPE_RE}(?::(\\d{2,5})x(\\d{2,5}))?$`, 'i');
 
 function parseViewport(spec) {
   const m = SPEC_RE.exec(String(spec || '').trim());
@@ -16,6 +18,8 @@ function parseViewport(spec) {
   return { type, width, height, size: `${width}x${height}`, key: `${type}/${width}x${height}`, spec: `${type}:${width}x${height}` };
 }
 
-const viewportLabel = type => (type === 'mobile' ? 'Mobile' : 'Desktop');
+const LABELS = { desktop: 'Desktop', tablet: 'Tablet', mobile: 'Mobile' };
+const viewportLabel = type => LABELS[type] || 'Desktop';
+const typeForWidth = width => (width < 768 ? 'mobile' : width < 1024 ? 'tablet' : 'desktop');
 
-module.exports = { PRESETS, TYPES, parseViewport, viewportLabel };
+module.exports = { PRESETS, TYPES, TYPE_RE, parseViewport, viewportLabel, typeForWidth };

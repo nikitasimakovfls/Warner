@@ -23,9 +23,35 @@ function latestRunId(dir) {
   return runs.length ? runs[runs.length - 1] : null;
 }
 
+let placeholders = null;
+function loadPlaceholders() {
+  if (placeholders) return placeholders;
+  placeholders = new Map();
+  try {
+    const dir = path.join(path.dirname(require.resolve('backstopjs/package.json')), 'capture', 'resources');
+    for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.png'))) {
+      const buf = fs.readFileSync(path.join(dir, f));
+      if (!placeholders.has(buf.length)) placeholders.set(buf.length, []);
+      placeholders.get(buf.length).push(buf);
+    }
+  } catch (e) {}
+  return placeholders;
+}
+
+function isPlaceholder(file) {
+  const list = loadPlaceholders().get(fs.statSync(file).size);
+  if (!list) return false;
+  const buf = fs.readFileSync(file);
+  return list.some(b => b.equals(buf));
+}
+
+function hasRef(file) {
+  return fs.existsSync(file) && !isPlaceholder(file);
+}
+
 function missingRefs(refDir, labels, type) {
   const suffix = viewportLabel(type);
-  return labels.filter(l => !fs.existsSync(path.join(refDir, `${l}_${suffix}.png`)));
+  return labels.filter(l => !hasRef(path.join(refDir, `${l}_${suffix}.png`)));
 }
 
 const pad = n => String(n).padStart(2, '0');
@@ -49,4 +75,4 @@ function writeLog(rel, text) {
   return rel;
 }
 
-module.exports = { append, read, latestRunId, missingRefs, logRel, writeLog, FILE };
+module.exports = { append, read, latestRunId, missingRefs, hasRef, isPlaceholder, logRel, writeLog, FILE };
