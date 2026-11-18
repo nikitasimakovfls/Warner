@@ -1,5 +1,6 @@
 const ENVIRONMENTS = require('./environments');
 const { parseViewport, viewportLabel } = require('./viewports');
+const settings = require('./settings');
 
 const target = process.env.TARGET;
 if (!ENVIRONMENTS[target]) {
@@ -84,7 +85,7 @@ const build = ({ label, path, targets, selector, hideSelectors = [], removeSelec
   url: `${baseUrl}${path}`,
   delay: 0,
   selectors: [selector || 'document'],
-  misMatchThreshold: 0,
+  misMatchThreshold: settings.load().misMatchThreshold,
   requireSameDimensions: true,
   hideSelectors: [...COMMON_HIDE, ...layoutHide, ...hideSelectors],
   removeSelectors: [...COMMON_REMOVE, ...removeSelectors],
@@ -135,9 +136,11 @@ module.exports = {
       '--font-render-hinting=none',
       '--hide-scrollbars'
     ],
-    waitTimeout: 60000
+    waitTimeout: 60000,
+    gotoParameters: { waitUntil: settings.load().pageLoad }
   },
-  asyncCaptureLimit: 4,
+  asyncCaptureLimit: settings.load().captureLimit,
+  captureMode: settings.load().captureMode,
   asyncCompareLimit: 20,
   debug: false,
   debugWindow: false

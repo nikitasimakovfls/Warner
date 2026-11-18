@@ -8,7 +8,9 @@
     "approve": "node run.js approve",
     "report": "node run.js report",
     "summary": "node run.js summary",
-    "ui": "node ui-server.js"
+    "ui": "node ui-server.js",
+    "timing": "node timing.js",
+    "imgstate": "node imgstate.js"
   },
   "devDependencies": {
     "backstopjs": "^6.3.25",

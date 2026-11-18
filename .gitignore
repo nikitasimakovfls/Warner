@@ -11,3 +11,8 @@ node_modules/
 
 # Run summaries
 reports/
+
+# Local QA artifacts
+Claude outputs/
+*.mp4
+*.docx

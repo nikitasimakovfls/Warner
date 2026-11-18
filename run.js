@@ -39,6 +39,7 @@ process.env.VIEWPORT = viewport.spec;
 const config = require('./backstop.config.js');
 
 console.log(`target: ${target} | ${ENVIRONMENTS[target]} | viewport: ${viewport.key}${filter ? ` | filter: ${filter}` : ''}`);
+console.log(`settings: captureLimit=${config.asyncCaptureLimit} | pageLoad=${config.engineOptions.gotoParameters.waitUntil} | captureMode=${config.captureMode} | misMatchThreshold=${config.scenarios[0] ? config.scenarios[0].misMatchThreshold : '-'}`);
 
 const fs = require('fs');
 const path = require('path');

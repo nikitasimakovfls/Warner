@@ -13,7 +13,7 @@ function copyDir(src, dst) {
   }
 }
 
-function writeRunHtml(runDir, refDir) {
+function writeRunHtml(runDir, refDir, since) {
   const reportFile = path.join(runDir, 'report.json');
   if (!fs.existsSync(reportFile)) return null;
   const report = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
@@ -22,7 +22,9 @@ function writeRunHtml(runDir, refDir) {
   const rel = f => path.relative(out, f).split(path.sep).join('/');
   for (const t of report.tests || []) {
     const p = t.pair;
-    p.reference = rel(path.join(refDir, p.fileName));
+    const ref = path.join(refDir, p.fileName);
+    const stale = since !== undefined && fs.existsSync(ref) && fs.statSync(ref).mtimeMs >= since;
+    p.reference = stale ? '' : rel(ref);
     p.test = rel(path.join(runDir, p.fileName));
     const diff = path.join(runDir, `failed_diff_${p.fileName}`);
     if (fs.existsSync(diff)) p.diffImage = rel(diff);

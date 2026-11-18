@@ -19,7 +19,26 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
-header { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 14px 24px; background: var(--panel); border-bottom: 1px solid var(--border); }
+header { position: relative; display: flex; align-items: center; justify-content: center; gap: 16px; padding: 14px 24px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.gear { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); color: var(--muted); cursor: pointer; }
+.gear:hover { color: var(--text); background: var(--hover); }
+.gear svg { width: 18px; height: 18px; }
+dialog.settings { border: 1px solid var(--border); border-radius: 12px; padding: 0; width: min(440px, calc(100vw - 32px)); background: var(--panel); color: var(--text); }
+dialog.settings::backdrop { background: rgba(0, 0, 0, .45); }
+.settings .sh { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.settings .sh h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.settings .sb { display: grid; gap: 14px; padding: 16px 18px; }
+.settings .row { display: grid; grid-template-columns: 1fr 110px; gap: 4px 12px; align-items: center; }
+.settings .row label { font-weight: 600; }
+.settings .row input[type=number] { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; width: 100%; }
+.settings .row select { padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
+.settings .row .d { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.settings .grp { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; border-top: 1px solid var(--border); padding-top: 12px; }
+.settings .grp:first-child { border-top: 0; padding-top: 0; }
+.settings .load { font-size: 12px; color: var(--muted); }
+.settings .load.warn { color: var(--warn); }
+.settings .sf { display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--border); }
+.settings .sf .err { flex: 1; margin: 0; }
 header h1 { font-size: 17px; margin: 0; font-weight: 600; }
 main { display: grid; grid-template-columns: 380px 1fr; gap: 16px; padding: 16px 24px; align-items: start; }
 @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
@@ -92,12 +111,16 @@ td a { color: var(--accent); text-decoration: none; margin-right: 8px; }
 .types label { display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--muted); }
 .types label.on { color: var(--text); }
 .types input { margin: 0; accent-color: var(--accent); }
-.keep { font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--muted); display: flex; align-items: center; gap: 6px; }
-.keep select { padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
 .link.apr { color: #8b5cf6; font-weight: 600; font-size: 13px; border: 1px solid #8b5cf6; border-radius: 999px; padding: 0 8px; margin-left: 2px; }
 .link.apr:hover { background: color-mix(in srgb, #8b5cf6 15%, transparent); }
 .link.apr:disabled { opacity: .4; cursor: not-allowed; }
 .muted { color: var(--muted); }
+#runs td.mk, #runs th.mk { text-align: center; padding-left: 0; padding-right: 0; }
+.star { background: none; border: 0; padding: 0 4px; cursor: pointer; font-size: 17px; line-height: 1; color: var(--muted); opacity: .45; }
+.star:hover { opacity: 1; }
+.star.on { color: #e0a800; opacity: 1; }
+.star:disabled { cursor: wait; }
+tr.marked td:last-child { box-shadow: inset -3px 0 0 #e0a800; }
 td .gone { color: var(--muted); opacity: .6; margin-right: 8px; cursor: help; }
 .pager { display: flex; align-items: center; gap: 10px; margin-top: 10px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
 .pager:empty { display: none; }
@@ -122,16 +145,98 @@ td .ln + .ln { margin-top: 4px; }
 .custom select, .custom input { width: 100%; min-width: 0; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
 .vpbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
 .link.clear:disabled { opacity: .35; cursor: not-allowed; text-decoration: none; }
+.hlinks { display: flex; align-items: center; gap: 14px; }
+.link.mkref { color: var(--accent); font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; opacity: .85; }
+.link.mkref:hover { opacity: 1; text-decoration: underline; }
+.link.mkref:disabled { opacity: .35; cursor: not-allowed; text-decoration: none; }
+.btn.danger-fill { background: var(--fail); color: #ffffff; border-color: var(--fail); }
+#confirm .ct { white-space: pre-line; }
+#confirm .cw { font-size: 12px; color: var(--muted); white-space: pre-line; }
 .cmd.clear-refs { border-color: var(--fail); color: var(--fail); }
 .btn.add { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .btn.remove { background: var(--fail); color: #ffffff; border-color: var(--fail); }
 .err { color: var(--fail); font-size: 12px; margin-top: 6px; min-height: 1em; }
+.apl { max-height: 50vh; overflow: auto; border: 1px solid var(--border); border-radius: 6px; }
+.apl .item { align-items: center; }
+.apl .k { margin-left: auto; font-size: 11px; font-weight: 600; }
+.apsub { font-size: 12px; color: var(--muted); }
 </style>
 </head>
 <body>
 <header>
   <h1>Warner automation tests</h1>
+  <button class="gear" id="gear" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 </header>
+<dialog class="settings" id="confirm">
+  <div class="sh"><h2 id="cf-title"></h2><button class="link" id="cf-close" aria-label="Close">&#10005;</button></div>
+  <div class="sb">
+    <div id="cf-text" class="ct"></div>
+    <div id="cf-note" class="cw"></div>
+  </div>
+  <div class="sf">
+    <button class="btn" id="cf-cancel">Cancel</button>
+    <button class="btn" id="cf-ok"></button>
+  </div>
+</dialog>
+<dialog class="settings" id="approve">
+  <div class="sh"><h2>Approve</h2><button class="link" id="a-close" aria-label="Close">&#10005;</button></div>
+  <div class="sb">
+    <div id="a-sub" class="apsub"></div>
+    <div class="tools"><button class="link" id="a-all">All</button><button class="link" id="a-none">None</button></div>
+    <div id="a-list" class="apl"></div>
+    <div id="a-count" class="count"></div>
+  </div>
+  <div class="sf">
+    <div id="a-err" class="err"></div>
+    <button class="btn" id="a-cancel">Cancel</button>
+    <button class="btn primary" id="a-ok">Approve</button>
+  </div>
+</dialog>
+<dialog class="settings" id="settings">
+  <div class="sh"><h2>Settings</h2><button class="link" id="s-close" aria-label="Close">&#10005;</button></div>
+  <div class="sb">
+    <div class="grp">Performance</div>
+    <div class="row">
+      <label for="s-capture">Capture threads</label>
+      <select id="s-capture"></select>
+      <div class="d">Scenarios captured at once per viewport (asyncCaptureLimit). One Chromium per thread.</div>
+    </div>
+    <div class="row">
+      <label for="s-parallel">Parallel viewports</label>
+      <select id="s-parallel"></select>
+      <div class="d">Selected viewports run at the same time instead of one after another.</div>
+    </div>
+    <div class="row">
+      <label for="s-pageload">Page load</label>
+      <select id="s-pageload"></select>
+      <div class="d">page.goto waitUntil. load: all resources incl. third-party scripts. domcontentloaded: HTML parsed, resources still loading. Scenario-level gotoParameters override it.</div>
+    </div>
+    <div class="row">
+      <label for="s-capture-mode">Capture mode</label>
+      <select id="s-capture-mode"></select>
+      <div class="d">stitched: full page assembled from viewport-height screenshots, each taken inside the viewport. fullpage: single Chrome full-page screenshot (parts beyond the viewport may be unrendered or low-res).</div>
+    </div>
+    <div id="s-load" class="load"></div>
+    <div class="grp">Comparison</div>
+    <div class="row">
+      <label for="s-threshold">Mismatch threshold, %</label>
+      <input id="s-threshold" type="number" min="0" max="100" step="0.01">
+      <div class="d">misMatchThreshold for every scenario: a test passes while the share of differing pixels is at or below this value. 0 to 100, two decimals. Applies to the next test run; references are not changed.</div>
+    </div>
+    <div class="grp">Storage</div>
+    <div class="row">
+      <label for="s-keep">Keep images of last N runs</label>
+      <select id="s-keep"></select>
+      <div class="d">Older test runs lose screenshots and html report. txt, md, log and report.json are kept.</div>
+    </div>
+  </div>
+  <div class="sf">
+    <div id="s-err" class="err"></div>
+    <button class="btn" id="s-reset">Defaults</button>
+    <button class="btn" id="s-cancel">Cancel</button>
+    <button class="btn primary" id="s-save">Save</button>
+  </div>
+</dialog>
 <main>
   <div class="stack">
     <section class="card">
@@ -140,7 +245,7 @@ td .ln + .ln { margin-top: 4px; }
       <div id="base" class="base"></div>
     </section>
     <section class="card">
-      <h2 class="cardhead">Viewport <button class="link clear" id="c-clear">Clear refs</button></h2>
+      <h2 class="cardhead">Viewport <span class="hlinks"><button class="link mkref" id="b-reference">Make reference</button><button class="link clear" id="c-clear">Clear refs</button></span></h2>
       <div id="vps" class="vps"></div>
       <div class="custom">
         <input id="c-name" type="text" maxlength="40" placeholder="name">
@@ -169,7 +274,6 @@ td .ln + .ln { margin-top: 4px; }
     <section class="card">
       <h2>Run</h2>
       <div class="actions">
-        <button class="btn" id="b-reference">Reference</button>
         <button class="btn primary" id="b-test">Test</button>
         <button class="btn danger" id="b-stop" disabled>Stop</button>
         <div id="runstate" class="runstate"><span id="dot" class="dot"></span><span id="status">Idle</span></div>
@@ -183,7 +287,7 @@ td .ln + .ln { margin-top: 4px; }
       <pre id="log"></pre>
     </section>
     <section class="card">
-      <h2 class="cardhead"><span class="rhead">Test runs <span id="types" class="types"></span></span><label class="keep">Keep images of last <select id="keep"></select> runs</label></h2>
+      <h2 class="cardhead"><span class="rhead">Test runs <span id="types" class="types"></span></span></h2>
       <div id="runs"></div>
       <div id="pager" class="pager"></div>
     </section>
@@ -334,10 +438,11 @@ function renderButtons() {
   $('hint').textContent = miss.length ? `Test disabled, missing references: ${miss.map(m => `${vpLabel(m.spec)} (${m.miss.length})`).join(', ')}` : '';
   const verbs = { reference: 'Getting refs', test: 'Testing', approve: 'Approving' };
   const vps = state.viewports || [];
-  const step = vps.length > 1 ? ` (${(state.index || 0) + 1}/${vps.length})` : '';
+  const active = state.active || [];
+  const step = vps.length > 1 ? ` (${state.done || 0}/${vps.length} done)` : '';
   $('runstate').className = busy ? 'runstate busy' : 'runstate';
   $('dot').className = busy ? 'dot busy' : 'dot';
-  $('status').textContent = !busy ? 'Idle' : state.stopped ? 'Stopping' : `${verbs[state.command] || state.command} ${state.target} ${keyLabel(state.current)}${step}`;
+  $('status').textContent = !busy ? 'Idle' : state.stopped ? 'Stopping' : `${verbs[state.command] || state.command} ${state.target} ${active.map(keyLabel).join(' + ')}${step}`;
   const m = [];
   if (state.command) m.push(`last: ${state.command} ${state.target} ${vps.map(keyLabel).join(' / ')}`);
   if (!busy && state.stopped) m.push('stopped');
@@ -345,6 +450,7 @@ function renderButtons() {
   if (state.startedAt) m.push(`started ${new Date(state.startedAt).toLocaleString()}`);
   if (state.finishedAt) m.push(`finished ${new Date(state.finishedAt).toLocaleString()}`);
   if (state.labels && state.labels.length) m.push(`${state.labels.length} scenario(s)`);
+  if (state.parallel > 1) m.push(`parallel ${state.parallel}`);
   $('runmeta').textContent = m.join(' | ');
   updateTook();
 }
@@ -363,8 +469,11 @@ function itemCells(row, it) {
     const hard = r.failed.filter(f => f.kind !== 'shift').length;
     const soft = r.failed.length - hard;
     const res = `<span class="${hard ? 'failc' : soft ? 'shiftc' : 'okc'}">${r.total - r.failed.length}/${r.total}</span>`;
-    const html = r.images === false ? '<span class="gone" title="images removed">html</span>' : `<a href="${r.html}" target="_blank">html</a>`;
-    const apr = r.approvable ? `<button class="link apr" data-vp="${esc(it.viewport)}" data-run="${esc(r.id)}" data-labels="${esc(r.failed.map(f => f.label).join('\n'))}" ${state.running ? 'disabled' : ''}>approve</button>` : '';
+    const html = r.images === false ? '<span class="gone" title="images removed">html</span>'
+      : r.refs === 0 ? `<span class="gone" title="${r.replaced ? 'references replaced' : 'references removed'}">html</span>`
+      : r.refs < r.total ? `<a href="${r.html}" target="_blank" title="references: ${r.refs}/${r.total}${r.replaced ? ` | replaced: ${r.replaced}` : ''}">html</a>`
+      : `<a href="${r.html}" target="_blank">html</a>`;
+    const apr = r.approvable ? `<button class="link apr" data-vp="${esc(it.viewport)}" data-run="${esc(r.id)}" data-labels="${esc(r.failed.map(f => f.label).join('\n'))}" data-kinds="${esc(r.failed.map(f => f.kind === 'shift' ? 'SHIFT' : 'FAILED').join('\n'))}" ${state.running ? 'disabled' : ''}>approve</button>` : '';
     const files = [html, r.txt && `<a href="${r.txt}" target="_blank">txt</a>`, r.md && `<a href="${r.md}" target="_blank">md</a>`, logLink, apr].filter(Boolean).join('');
     return [res, r.status, files];
   }
@@ -395,20 +504,58 @@ function renderPager(r) {
   $('pg-next').onclick = () => { runsPage[env] = r.page + 1; loadRuns(); };
 }
 
-let keepValue = 10;
+let cfg = null;
+const fmtKeep = n => (n ? String(n) : 'all');
+function fillSelect(id, opts, value, fmt = String) {
+  $(id).innerHTML = opts.map(n => `<option value="${n}" ${n === value ? 'selected' : ''}>${fmt(n)}</option>`).join('');
+}
+function renderLoad() {
+  const c = Number($('s-capture').value), p = Number($('s-parallel').value);
+  const n = c * p;
+  $('s-load').textContent = `Up to ${n} Chromium instance(s) at once${n > 8 ? ' | high CPU load may cause unstable screenshots' : ''}`;
+  $('s-load').className = n > 8 ? 'load warn' : 'load';
+}
+function fillSettings(v) {
+  fillSelect('s-capture', cfg.options.captureLimit, v.captureLimit);
+  fillSelect('s-parallel', cfg.options.parallelViewports, v.parallelViewports);
+  fillSelect('s-keep', cfg.options.keepTestImages, v.keepTestImages, fmtKeep);
+  $('s-threshold').value = String(v.misMatchThreshold);
+  $('s-capture-mode').innerHTML = cfg.options.captureMode.map(n => `<option value="${n}" ${n === v.captureMode ? 'selected' : ''}>${n}</option>`).join('');
+  $('s-pageload').innerHTML = cfg.options.pageLoad.map(n => `<option value="${n}" ${n === v.pageLoad ? 'selected' : ''}>${n}</option>`).join('');
+  renderLoad();
+}
 async function loadSettings() {
-  const st = await fetch('/api/settings').then(r => r.json());
-  keepValue = st.keepTestImages;
-  $('keep').innerHTML = st.keepOptions.map(n => `<option value="${n}" ${n === keepValue ? 'selected' : ''}>${n || 'all'}</option>`).join('');
-  $('keep').onchange = async e => {
-    const n = Number(e.target.value);
-    if (n && (!keepValue || n < keepValue) && !confirm(`Delete screenshots of test runs older than the last ${n} for every environment and viewport? Reports and logs are kept.`)) { e.target.value = String(keepValue); return; }
-    const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keepTestImages: n }) });
-    const d = await r.json();
-    if (!r.ok) { alert(d.error); e.target.value = String(keepValue); return; }
-    keepValue = d.keepTestImages;
-    loadRuns();
-  };
+  cfg = await fetch('/api/settings').then(r => r.json());
+}
+async function openSettings() {
+  await loadSettings();
+  fillSettings(cfg);
+  $('s-err').textContent = state.running ? 'Run in progress, settings are read-only' : '';
+  $('s-save').disabled = !!state.running;
+  $('settings').showModal();
+}
+async function saveSettings() {
+  const thr = Number($('s-threshold').value);
+  const [tmin, tmax] = cfg.ranges.misMatchThreshold;
+  if ($('s-threshold').value === '' || !Number.isFinite(thr) || thr < tmin || thr > tmax || Math.abs(Math.round(thr * 100) - thr * 100) >= 1e-6) { $('s-err').textContent = `Mismatch threshold: ${tmin} to ${tmax}, up to two decimals`; return; }
+  const patch = { misMatchThreshold: thr, captureLimit: Number($('s-capture').value), parallelViewports: Number($('s-parallel').value), keepTestImages: Number($('s-keep').value), pageLoad: $('s-pageload').value, captureMode: $('s-capture-mode').value };
+  const n = patch.keepTestImages, prev = cfg.keepTestImages;
+  if (n !== prev && n && (!prev || n < prev) && !confirm(`Delete screenshots of test runs older than the last ${n} for every environment and viewport? Reports and logs are kept.`)) return;
+  const r = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+  const d = await r.json();
+  if (!r.ok) { $('s-err').textContent = d.error; return; }
+  $('settings').close();
+  loadSettings();
+  loadRuns();
+}
+function initSettings() {
+  $('gear').onclick = openSettings;
+  $('s-close').onclick = $('s-cancel').onclick = () => $('settings').close();
+  $('s-save').onclick = saveSettings;
+  $('s-reset').onclick = () => fillSettings(cfg.defaults);
+  $('s-capture').onchange = $('s-parallel').onchange = renderLoad;
+  $('s-threshold').oninput = () => { $('s-err').textContent = ''; };
+  $('settings').addEventListener('click', e => { if (e.target === $('settings')) $('settings').close(); });
 }
 
 async function loadRuns() {
@@ -423,7 +570,7 @@ async function loadRuns() {
   renderPager(r);
   const rows = r.rows || [];
   if (!rows.length) { $('runs').innerHTML = '<div class="empty">No runs</div>'; return; }
-  $('runs').innerHTML = `<table><colgroup><col style="width:17%"><col style="width:19%"><col style="width:10%"><col style="width:20%"><col style="width:11%"><col style="width:23%"></colgroup><thead><tr><th>Run</th><th>Viewport</th><th>Duration</th><th>Scenarios</th><th>Status</th><th>Report</th></tr></thead><tbody>${
+  $('runs').innerHTML = `<table><colgroup><col style="width:17%"><col style="width:19%"><col style="width:10%"><col style="width:20%"><col style="width:11%"><col style="width:23%"><col style="width:36px"></colgroup><thead><tr><th>Run</th><th>Viewport</th><th>Duration</th><th>Scenarios</th><th>Status</th><th>Report</th><th class="mk" title="Marked">&#9733;</th></tr></thead><tbody>${
     rows.map(row => {
       const cells = row.items.map(it => itemCells(row, it));
       const col = i => cells.map(c => `<div class="ln">${i === 1 ? `<span class="${cls(c[1])}">${c[1]}</span>` : c[i]}</div>`).join('');
@@ -435,9 +582,28 @@ async function loadRuns() {
       const ends = row.items.map(it => it.finishedAt).filter(Boolean).map(d => new Date(d).getTime());
       const total = starts.length && ends.length === row.items.length ? Math.max(...ends) - Math.min(...starts) : null;
       const durCol = `<div class="ln"><b>${fmtDur(total)}</b></div>${durs.map(d => `<div class="ln">${row.items.length > 1 ? fmtDur(d) : '&nbsp;'}</div>`).join('')}`;
-      return `<tr class="cmd-${esc(row.command)}"><td>${fmtTime(row.startedAt)}</td><td>${vps}</td><td>${durCol}</td><td>${pad}${col(0)}</td><td>${pad}${col(1)}</td><td>${pad}${col(2)}</td></tr>`;
+      const star = `<button class="star${row.marked ? ' on' : ''}" data-key="${esc(row.key || '')}" aria-pressed="${row.marked ? 'true' : 'false'}" title="${row.marked ? 'Unmark' : 'Mark'}">${row.marked ? '&#9733;' : '&#9734;'}</button>`;
+      return `<tr class="cmd-${esc(row.command)}${row.marked ? ' marked' : ''}"><td>${fmtTime(row.startedAt)}</td><td>${vps}</td><td>${durCol}</td><td>${pad}${col(0)}</td><td>${pad}${col(1)}</td><td>${pad}${col(2)}</td><td class="mk">${row.key ? star : ''}</td></tr>`;
     }).join('')
   }</tbody></table>`;
+}
+
+async function toggleMark(b) {
+  const marked = !b.classList.contains('on');
+  const paint = on => {
+    b.classList.toggle('on', on);
+    b.innerHTML = on ? '&#9733;' : '&#9734;';
+    b.title = on ? 'Unmark' : 'Mark';
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.closest('tr').classList.toggle('marked', on);
+  };
+  paint(marked);
+  b.disabled = true;
+  try {
+    const res = await fetch('/api/mark', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: env, key: b.dataset.key, marked }) });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || res.status);
+  } catch (e) { paint(!marked); }
+  b.disabled = false;
 }
 
 function renderAll() {
@@ -455,22 +621,78 @@ function refCount() {
   return vpList().reduce((n, spec) => { const x = (sets[env] || []).find(v => v.spec === spec); return n + (x ? x.labels.length : 0); }, 0);
 }
 
+let confirmResolve = null;
+function askConfirm({ title, text, note = '', ok, danger = false }) {
+  $('cf-title').textContent = title;
+  $('cf-text').textContent = text;
+  $('cf-note').textContent = note;
+  $('cf-note').style.display = note ? '' : 'none';
+  $('cf-ok').textContent = ok;
+  $('cf-ok').className = danger ? 'btn danger-fill' : 'btn primary';
+  $('confirm').showModal();
+  $('cf-cancel').focus();
+  return new Promise(res => { confirmResolve = res; });
+}
+function closeConfirm(v) {
+  if ($('confirm').open) $('confirm').close();
+  if (confirmResolve) { const r = confirmResolve; confirmResolve = null; r(v); }
+}
+function initConfirm() {
+  $('cf-ok').onclick = () => closeConfirm(true);
+  $('cf-cancel').onclick = $('cf-close').onclick = () => closeConfirm(false);
+  $('confirm').addEventListener('cancel', e => { e.preventDefault(); closeConfirm(false); });
+  $('confirm').addEventListener('click', e => { if (e.target === $('confirm')) closeConfirm(false); });
+}
+
 async function clearRefs() {
   const vps = vpList();
   const n = refCount();
-  if (!confirm(`Delete ${n} reference screenshot(s) of ${env} for ${vps.map(vpLabel).join(' + ')}? This cannot be undone.`)) return;
+  const ok = await askConfirm({
+    title: 'Clear references',
+    text: `Environment: ${env}\nViewports: ${vps.map(vpLabel).join(', ')}\nReference screenshots: ${n}`,
+    note: 'Delete is permanent.',
+    ok: 'Clear refs',
+    danger: true
+  });
+  if (!ok) return;
   const r = await fetch('/api/refs/clear', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: env, viewports: vps }) });
   const d = await r.json();
   if (!r.ok) { alert(d.error); return; }
   loadRuns();
 }
 
-async function approveRun(b) {
+let approveCtx = null;
+function renderApproveCount() {
+  const boxes = [...$('a-list').querySelectorAll('input')];
+  const n = boxes.filter(i => i.checked).length;
+  $('a-count').textContent = `${n} / ${boxes.length} selected`;
+  $('a-ok').disabled = !n || !!state.running;
+}
+function approveRun(b) {
   const labels = b.dataset.labels.split('\n');
-  const list = labels.length > 15 ? [...labels.slice(0, 15), `... +${labels.length - 15} more`] : labels;
-  if (!confirm(`Approve ${labels.length} scenario(s) of ${env} ${keyLabel(b.dataset.vp)} run ${b.dataset.run} as references?\n\n${list.join('\n')}`)) return;
-  const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: env, viewport: b.dataset.vp, runId: b.dataset.run }) });
-  if (!r.ok) alert((await r.json()).error);
+  const kinds = (b.dataset.kinds || '').split('\n');
+  approveCtx = { vp: b.dataset.vp, run: b.dataset.run };
+  $('a-sub').textContent = `${env} | ${keyLabel(b.dataset.vp)} | run ${b.dataset.run}`;
+  $('a-list').innerHTML = labels.map((l, i) => `<label class="item"><input type="checkbox" data-l="${esc(l)}" checked><span>${esc(l)}</span><span class="k ${kinds[i] === 'SHIFT' ? 'shiftc' : 'failc'}">${esc(kinds[i] || '')}</span></label>`).join('');
+  $('a-list').querySelectorAll('input').forEach(i => i.onchange = renderApproveCount);
+  $('a-err').textContent = '';
+  renderApproveCount();
+  $('approve').showModal();
+}
+async function submitApprove() {
+  const labels = [...$('a-list').querySelectorAll('input')].filter(i => i.checked).map(i => i.dataset.l);
+  if (!labels.length || !approveCtx) return;
+  $('a-ok').disabled = true;
+  const r = await fetch('/api/approve', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ target: env, viewport: approveCtx.vp, runId: approveCtx.run, labels }) });
+  if (!r.ok) { $('a-err').textContent = (await r.json()).error; renderApproveCount(); return; }
+  $('approve').close();
+}
+function initApprove() {
+  $('a-close').onclick = $('a-cancel').onclick = () => $('approve').close();
+  $('a-ok').onclick = submitApprove;
+  $('a-all').onclick = () => { $('a-list').querySelectorAll('input').forEach(i => i.checked = true); renderApproveCount(); };
+  $('a-none').onclick = () => { $('a-list').querySelectorAll('input').forEach(i => i.checked = false); renderApproveCount(); };
+  $('approve').addEventListener('click', e => { if (e.target === $('approve')) $('approve').close(); });
 }
 
 async function run(command) {
@@ -483,7 +705,14 @@ async function run(command) {
       const have = new Set(x ? x.labels : []);
       return { spec, n: [...sel].filter(l => have.has(l)).length };
     }).filter(e => e.n);
-    if (existing.length && !confirm(`Replace existing ${env} references: ${existing.map(e => `${vpLabel(e.spec)} (${e.n})`).join(', ')}?${all ? '\n\nThe viewport folders are cleared before capture.' : ''}`)) return;
+    const ok = await askConfirm({
+      title: 'Make reference',
+      text: `Environment: ${env}\nViewports: ${vps.map(vpLabel).join(', ')}\nScenarios: ${sel.size}` + (existing.length ? `\nReplaced: ${existing.map(e => `${vpLabel(e.spec)} (${e.n})`).join(', ')}` : ''),
+      note: existing.length ? (all ? 'Existing references are overwritten. Viewport folders are cleared before capture.' : 'Existing references are overwritten.') : '',
+      ok: 'Make reference',
+      danger: existing.length > 0
+    });
+    if (!ok) return;
   }
   const r = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command, target: env, viewports: vps, labels: [...sel] }) });
   if (!r.ok) {
@@ -513,8 +742,11 @@ async function init() {
   state = s; $('log').textContent = (s.log || []).join('\n') + (s.log && s.log.length ? '\n' : '');
   renderAll();
   loadSettings();
+  initSettings();
+  initApprove();
+  initConfirm();
   ['reference', 'test'].forEach(c => $('b-' + c).onclick = () => run(c));
-  $('runs').addEventListener('click', e => { const b = e.target.closest('.apr'); if (b) approveRun(b); });
+  $('runs').addEventListener('click', e => { const b = e.target.closest('.apr'); if (b) approveRun(b); const s = e.target.closest('.star'); if (s) toggleMark(s); });
   $('b-stop').onclick = () => fetch('/api/stop', { method: 'POST' });
   $('search').oninput = renderList;
   $('c-add').onclick = addCustom;

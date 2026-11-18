@@ -8,6 +8,7 @@ const { PRESETS, TYPES, parseViewport } = require('./viewports');
 const history = require('./history');
 const customViewports = require('./custom-viewports');
 const settings = require('./settings');
+const marks = require('./marks');
 const { pruneAll, hasImages, mb } = require('./prune');
 
 const HOST = '127.0.0.1';
@@ -33,8 +34,8 @@ const MIME = {
   '.xml': 'application/xml; charset=utf-8'
 };
 
-const state = { running: false, job: null, command: null, target: null, viewports: [], current: null, index: 0, labels: [], startedAt: null, finishedAt: null, exitCode: null, stopped: false, log: [] };
-let child = null;
+const state = { running: false, job: null, command: null, target: null, viewports: [], active: [], done: 0, parallel: 1, labels: [], startedAt: null, finishedAt: null, exitCode: null, stopped: false, log: [] };
+const children = new Set();
 const clients = new Set();
 
 const stripAnsi = s => s.replace(/\x1b\[[0-9;]*[A-Za-z]/g, '');
@@ -44,8 +45,8 @@ function broadcast(event, data) {
   for (const res of clients) res.write(msg);
 }
 
-function pushLog(text) {
-  const lines = stripAnsi(text).split(/\r?\n/).filter(l => l.length);
+function pushLog(text, prefix = '') {
+  const lines = stripAnsi(text).split(/\r?\n/).filter(l => l.length).map(l => prefix + l);
   if (!lines.length) return;
   state.log.push(...lines);
   if (state.log.length > MAX_LOG) state.log.splice(0, state.log.length - MAX_LOG);
@@ -116,7 +117,7 @@ function listRows(target, page, size, types) {
   const groups = new Map();
   for (const e of history.read().filter(e => e.target === target)) {
     const key = e.job || e.startedAt;
-    if (!groups.has(key)) groups.set(key, { startedAt: e.startedAt, command: e.command, scenarios: e.scenarios, items: [] });
+    if (!groups.has(key)) groups.set(key, { key, startedAt: e.startedAt, command: e.command, scenarios: e.scenarios, items: [] });
     const g = groups.get(key);
     if (e.startedAt < g.startedAt) g.startedAt = e.startedAt;
     const runKey = e.runId && tests.has(`${e.viewport}|${e.runId}`) ? `${e.viewport}|${e.runId}` : null;
@@ -124,12 +125,13 @@ function listRows(target, page, size, types) {
     g.items.push({ viewport: e.viewport, exitCode: e.exitCode, stopped: !!e.stopped, runKey, logRel: e.log || null, approvedRun: e.approvedRun || null, scenarios: e.scenarios, startedAt: e.startedAt || null, finishedAt: e.finishedAt || null });
   }
   const rows = [...groups.values()];
-  for (const [k, t] of tests) if (!used.has(k)) rows.push({ startedAt: runIdToIso(t.id), command: 'test', scenarios: null, items: [{ viewport: t.vp.key, exitCode: null, stopped: false, runKey: k, logRel: null }] });
+  for (const [k, t] of tests) if (!used.has(k)) rows.push({ key: k, startedAt: runIdToIso(t.id), command: 'test', scenarios: null, items: [{ viewport: t.vp.key, exitCode: null, stopped: false, runKey: k, logRel: null }] });
   rows.sort((a, b) => (a.startedAt < b.startedAt ? 1 : a.startedAt > b.startedAt ? -1 : 0));
   if (types) rows.splice(0, rows.length, ...rows.filter(r => types.has(r.command)));
   const total = rows.length;
   const pages = Math.max(1, Math.ceil(total / size));
   const cur = Math.min(Math.max(1, page), pages);
+  const marked = marks.list(target);
   const latest = new Map();
   for (const t of tests.values()) if (!latest.has(t.vp.key) || t.id > latest.get(t.vp.key)) latest.set(t.vp.key, t.id);
   const slice = rows.slice((cur - 1) * size, cur * size).map(row => {
@@ -141,7 +143,7 @@ function listRows(target, page, size, types) {
       return { viewport: it.viewport, exitCode: it.exitCode, stopped: it.stopped, run, log, approvedRun: it.approvedRun || null, scenarios: it.scenarios, startedAt: it.startedAt || null, finishedAt: it.finishedAt || null };
     });
     const scenarios = row.scenarios === null ? (items[0].run ? items[0].run.total : 0) : row.scenarios;
-    return { startedAt: row.startedAt, command: row.command, scenarios, items };
+    return { key: row.key, marked: marked.has(row.key), startedAt: row.startedAt, command: row.command, scenarios, items };
   });
   return { rows: slice, total, page: cur, pages, size };
 }
@@ -165,6 +167,15 @@ function runInfo(target, vp, id) {
       const reportsDir = path.join(ROOT, 'reports', target, ...vp.key.split('/'));
       const rel = `/reports/${target}/${vp.key}/${base}`;
       const hard = failed.filter(f => f.kind !== 'shift').length;
+      const refDir = refDirOf(target, vp.key);
+      const since = new Date(runIdToIso(id)).getTime();
+      let refs = 0, replaced = 0;
+      for (const t of tests) {
+        const file = path.join(refDir, t.pair.fileName);
+        if (!history.hasRef(file)) continue;
+        if (fs.statSync(file).mtimeMs >= since) replaced++;
+        else refs++;
+      }
       return {
         id,
         viewport: vp.key,
@@ -173,6 +184,8 @@ function runInfo(target, vp, id) {
         status: !failed.length ? 'Success' : hard ? 'FAILED' : 'SHIFT',
         html: `/run-html/${target}/${vp.key}/${id}`,
         images: hasImages(path.join(dir, id)),
+        refs,
+        replaced,
         txt: fs.existsSync(path.join(reportsDir, `${base}.txt`)) ? `${rel}.txt` : null,
         md: fs.existsSync(path.join(reportsDir, `${base}.md`)) ? `${rel}.md` : null,
         log: fs.existsSync(path.join(reportsDir, `${base}.log`)) ? `${rel}.log` : null
@@ -218,30 +231,47 @@ function checkRun(command, target, vps, labels) {
 
 function startRun(command, target, vps, selected, filter, extraEnv = {}) {
   const job = new Date().toISOString();
-  Object.assign(state, { running: true, job, command, target, viewports: vps.map(v => v.key), current: null, index: 0, labels: selected, startedAt: job, finishedAt: null, exitCode: null, stopped: false, log: [] });
+  const parallel = Math.min(Math.max(1, settings.load().parallelViewports), vps.length);
+  Object.assign(state, { running: true, job, command, target, viewports: vps.map(v => v.key), active: [], done: 0, parallel, labels: selected, startedAt: job, finishedAt: null, exitCode: null, stopped: false, log: [] });
   broadcast('state', publicState());
+  let nextIndex = 0;
   const finish = () => {
-    child = null;
-    Object.assign(state, { running: false, current: null, finishedAt: new Date().toISOString() });
+    Object.assign(state, { running: false, active: [], finishedAt: new Date().toISOString() });
     broadcast('state', publicState());
     broadcast('runs', { target });
   };
-  const next = i => {
-    if (i >= vps.length || state.stopped) return finish();
-    const vp = vps[i];
+  const launch = () => {
+    while (!state.stopped && nextIndex < vps.length && state.active.length < parallel) runOne(vps[nextIndex++]);
+    if (!state.active.length) finish();
+  };
+  const runOne = vp => {
     const args = ['run.js', command, target, vp.spec];
     if (filter) args.push(filter);
     const before = command === 'test' ? history.latestRunId(runDirOf(target, vp.key)) : null;
     const started = new Date().toISOString();
-    Object.assign(state, { current: vp.key, index: i });
+    const prefix = parallel > 1 ? `[${vp.key}] ` : '';
+    state.active.push(vp.key);
     broadcast('state', publicState());
     const lines = [`> node ${args.join(' ')}`];
-    pushLog(lines[0]);
-    child = spawn(process.execPath, args, { cwd: ROOT, env: { ...process.env, ...extraEnv, UI_RUN: '1', FORCE_COLOR: '0' }, windowsHide: true });
-    const out = d => { const t = d.toString(); lines.push(t.replace(/\r?\n$/, '')); pushLog(t); };
-    child.stdout.on('data', out);
-    child.stderr.on('data', out);
-    child.on('close', code => {
+    pushLog(lines[0], prefix);
+    const proc = spawn(process.execPath, args, { cwd: ROOT, env: { ...process.env, ...extraEnv, UI_RUN: '1', FORCE_COLOR: '0' }, windowsHide: true });
+    children.add(proc);
+    let buf = '';
+    const out = d => {
+      const t = d.toString();
+      lines.push(t.replace(/\r?\n$/, ''));
+      if (!prefix) return pushLog(t);
+      buf += t;
+      const cut = buf.lastIndexOf('\n');
+      if (cut < 0) return;
+      pushLog(buf.slice(0, cut), prefix);
+      buf = buf.slice(cut + 1);
+    };
+    proc.stdout.on('data', out);
+    proc.stderr.on('data', out);
+    proc.on('close', code => {
+      children.delete(proc);
+      if (buf) pushLog(buf, prefix);
       const after = command === 'test' ? history.latestRunId(runDirOf(target, vp.key)) : null;
       const exitCode = code === null ? 1 : code;
       const runId = after && after !== before ? after : null;
@@ -250,23 +280,27 @@ function startRun(command, target, vps, selected, filter, extraEnv = {}) {
       try { log = history.writeLog(history.logRel(target, vp.key, command, runId, started), lines.join('\n')); } catch (e) {}
       history.append({ job, command, target, viewport: vp.key, filter, scenarios: selected.length, startedAt: started, finishedAt: new Date().toISOString(), exitCode, stopped: state.stopped, runId, approvedRun: extraEnv.APPROVE_RUN || null, log });
       state.exitCode = Math.max(state.exitCode || 0, exitCode);
-      pushLog(`exit code: ${code}`);
+      state.active = state.active.filter(k => k !== vp.key);
+      state.done++;
+      pushLog(`exit code: ${code}`, prefix);
+      broadcast('state', publicState());
       broadcast('runs', { target });
-      next(i + 1);
+      launch();
     });
   };
-  next(0);
+  launch();
 }
 
 function stopRun() {
   if (!state.running) return;
   state.stopped = true;
   broadcast('state', publicState());
-  if (!child) return;
-  if (process.platform === 'win32') {
-    spawn('taskkill', ['/pid', String(child.pid), '/T', '/F'], { windowsHide: true });
-  } else {
-    child.kill('SIGTERM');
+  for (const proc of children) {
+    if (process.platform === 'win32') {
+      spawn('taskkill', ['/pid', String(proc.pid), '/T', '/F'], { windowsHide: true });
+    } else {
+      proc.kill('SIGTERM');
+    }
   }
 }
 
@@ -339,13 +373,22 @@ const server = http.createServer(async (req, res) => {
       startRun(command, target, vps, chk.selected, chk.filter);
       return sendJson(res, 200, publicState());
     }
+    if (req.method === 'POST' && p === '/api/mark') {
+      const { target, key, marked } = await readBody(req);
+      if (!ENVIRONMENTS[target] || typeof key !== 'string' || !key || key.length > 200) return sendJson(res, 400, { error: 'bad target or key' });
+      marks.set(target, key, !!marked);
+      broadcast('runs', { target });
+      return sendJson(res, 200, { key, marked: !!marked });
+    }
     if (req.method === 'POST' && p === '/api/approve') {
       if (state.running) return sendJson(res, 409, { error: 'run in progress' });
-      const { target, viewport, runId } = await readBody(req);
+      const { target, viewport, runId, labels: picked } = await readBody(req);
       const chk = approveTarget(target, viewport, runId);
       if (chk.error) return sendJson(res, 400, chk);
       const all = loadScenarios(target).map(s => s.label);
-      const labels = chk.labels.filter(l => all.includes(l));
+      const wanted = Array.isArray(picked) ? new Set(picked) : null;
+      const labels = chk.labels.filter(l => all.includes(l) && (!wanted || wanted.has(l)));
+      if (!labels.length) return sendJson(res, 400, { error: 'no scenarios selected' });
       const filter = labels.length === all.length ? null : `^(${labels.map(escapeRe).join('|')})$`;
       startRun('approve', target, [chk.vp], labels, filter, { APPROVE_RUN: runId });
       return sendJson(res, 200, publicState());
@@ -387,14 +430,20 @@ const server = http.createServer(async (req, res) => {
       stopRun();
       return sendJson(res, 200, { ok: true });
     }
-    if (req.method === 'GET' && p === '/api/settings') return sendJson(res, 200, { ...settings.load(), keepOptions: settings.KEEP_OPTIONS });
+    if (req.method === 'GET' && p === '/api/settings') return sendJson(res, 200, { ...settings.load(), options: settings.OPTIONS, ranges: settings.RANGES, defaults: settings.DEFAULTS });
     if (req.method === 'POST' && p === '/api/settings') {
       if (state.running) return sendJson(res, 409, { error: 'run in progress' });
-      const { keepTestImages } = await readBody(req);
-      if (!settings.KEEP_OPTIONS.includes(keepTestImages)) return sendJson(res, 400, { error: 'bad keepTestImages' });
-      const saved = settings.save({ keepTestImages });
-      const pruned = pruneAll(saved.keepTestImages);
-      if (pruned.runs) pushLog(`prune: ${pruned.runs} run(s) | ${mb(pruned.bytes)} | keep: ${saved.keepTestImages}`);
+      const v = settings.validate(await readBody(req));
+      if (v.error) return sendJson(res, 400, { error: v.error });
+      const prev = settings.load();
+      const saved = settings.save(v.clean);
+      let pruned = { runs: 0, bytes: 0 };
+      if (saved.keepTestImages !== prev.keepTestImages) {
+        pruned = pruneAll(saved.keepTestImages);
+        if (pruned.runs) pushLog(`prune: ${pruned.runs} run(s) | ${mb(pruned.bytes)} | keep: ${saved.keepTestImages}`);
+      }
+      const changed = Object.keys(v.clean).filter(k => v.clean[k] !== prev[k]);
+      if (changed.length) pushLog(`settings: ${changed.map(k => `${k}=${saved[k]}`).join(' | ')}`);
       for (const t of Object.keys(ENVIRONMENTS)) broadcast('runs', { target: t });
       return sendJson(res, 200, { ...saved, pruned });
     }
@@ -410,7 +459,9 @@ const server = http.createServer(async (req, res) => {
       const runDir = path.join(ROOT, 'backstop_data', 'bitmaps_test', ...key, m[4]);
       const refDir = path.join(ROOT, 'backstop_data', 'bitmaps_reference', ...key);
       if (fs.existsSync(path.join(runDir, 'report.json')) && !hasImages(runDir)) { res.writeHead(410, { 'Content-Type': MIME['.txt'] }); return res.end('images removed'); }
-      if (!writeRunHtml(runDir, refDir)) return sendJson(res, 404, { error: 'run not found' });
+      const info = fs.existsSync(path.join(runDir, 'report.json')) ? runInfo(m[1], vp, m[4]) : null;
+      if (info && !info.refs) { res.writeHead(410, { 'Content-Type': MIME['.txt'] }); return res.end(info.replaced ? 'references replaced' : 'references removed'); }
+      if (!writeRunHtml(runDir, refDir, new Date(runIdToIso(m[4])).getTime())) return sendJson(res, 404, { error: 'run not found' });
       res.writeHead(302, { Location: `/data/bitmaps_test/${key.join('/')}/${m[4]}/${HTML_DIR}/index.html` });
       return res.end();
     }
